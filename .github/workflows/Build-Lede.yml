@@ -77,7 +77,13 @@ jobs:
 
     - name: Install feeds
       run: cd openwrt && ./scripts/feeds install -a
-      
+     
+    - name: Install Turboacc
+      run: |
+         cd openwrt
+         curl -sSL https://raw.githubusercontent.com/chenmozhijin/turboacc/luci/add_turboacc.sh -o add_turboacc.sh
+         bash add_turboacc.sh
+         
 #    - name: Move DIY-Config
 #      run: mv -f indexa.htm openwrt/package/lean/autocore/files/arm/index.htm && mv -f indexb.htm openwrt/package/lean/autocore/files/x86/index.htm && mv -f banner openwrt/package/base-files/files/etc/ && mv -f base.po openwrt/feeds/luci/modules/luci-base/po/zh-cn/
 
