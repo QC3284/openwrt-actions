@@ -18,8 +18,8 @@ on:
     inputs:
       ssh:
         description: 'SSH connection to Actions'
-        required: false
-        default: 'true'
+        required: true
+        default: 'false'
 
 env:
   REPO_URL: https://git.openwrt.org/openwrt/openwrt.git
@@ -64,13 +64,21 @@ jobs:
         df -hT $PWD
         git clone $REPO_URL openwrt
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
+        
+    - name:  Switch branches
+      run: |
+        git checkout v23.05.3
 
     - name: Load custom feeds
       run: |
         cd openwrt
         sed -i '1i src-git kenzo https://github.com/kenzok8/openwrt-packages' feeds.conf.default
         sed -i '2i src-git small https://github.com/kenzok8/small' feeds.conf.default
-        git pull 
+        git pull
+        
+    - name: Load ntf-fullcone
+      run: |
+        cd openwrt && cd package && cd network && cd utils && git clone https://github.com/fullcone-nat-nftables/nft-fullcone
     
     - name: Update feeds
       run: cd openwrt && ./scripts/feeds update -a
@@ -78,11 +86,11 @@ jobs:
     - name: Install feeds
       run: cd openwrt && ./scripts/feeds install -a
      
-    - name: Install Turboacc
-      run: |
-         cd openwrt
-         curl -sSL https://raw.githubusercontent.com/chenmozhijin/turboacc/luci/add_turboacc.sh -o add_turboacc.sh
-         bash add_turboacc.sh
+   #- name: Install Turboacc
+   #   run: |
+   #     cd openwrt
+   #     curl -sSL https://raw.githubusercontent.com/chenmozhijin/turboacc/luci/add_turboacc.sh -o add_turboacc.sh
+   #     bash add_turboacc.sh
          
 #    - name: Move DIY-Config
 #      run: mv -f indexa.htm openwrt/package/lean/autocore/files/arm/index.htm && mv -f indexb.htm openwrt/package/lean/autocore/files/x86/index.htm && mv -f banner openwrt/package/base-files/files/etc/ && mv -f base.po openwrt/feeds/luci/modules/luci-base/po/zh-cn/
@@ -90,7 +98,7 @@ jobs:
     - name: Downlaod Config
       run: |
          cd openwrt
-         wget https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/2.config -O .config
+         wget https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/6.config -O .config
       
     - name: Load custom configuration
       run: |
@@ -108,7 +116,7 @@ jobs:
       id: package
       run: |
         cd openwrt
-        make download -j8
+        make download -j8 V=99
         find dl -size -1024c -exec ls -l {} \;
         find dl -size -1024c -exec rm -f {} \;
 
@@ -117,8 +125,8 @@ jobs:
       run: |
         cd openwrt
         echo -e "$(nproc) thread compile"
-        make -j$(nproc) || make -j8 || make -j8 V=s
-        echo "::set-output name=status::success"
+        make -j8 V=99 || make -j8 V=99 || make -j8 V=99
+        echo "status=success" >> $GITHUB_STATE
         grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
         [ -s DEVICE_NAME ] && echo "DEVICE_NAME=_$(cat DEVICE_NAME)" >> $GITHUB_ENV
         echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
@@ -141,7 +149,7 @@ jobs:
         cd openwrt/bin/targets/*/*
         rm -rf packages
         echo "FIRMWARE=$PWD" >> $GITHUB_ENV
-        echo "::set-output name=status::success"
+        echo "status=success" >> $GITHUB_OUTPUT
 
     - name: Upload firmware directory
       uses: actions/upload-artifact@main
@@ -157,7 +165,7 @@ jobs:
         curl -fsSL git.io/file-transfer | sh
         ./transfer cow --block 2621440 -s -p 64 --no-progress ${FIRMWARE} 2>&1 | tee cowtransfer.log
         echo "::warning file=cowtransfer.com::$(cat cowtransfer.log | grep https)"
-        echo "::set-output name=url::$(cat cowtransfer.log | grep https | cut -f3 -d" ")"
+        echo "url=$(cat cowtransfer.log | grep https | cut -f3 -d" ")" >> $GITHUB_OUTPUT
 
     - name: Upload firmware to WeTransfer
       id: wetransfer
@@ -166,7 +174,7 @@ jobs:
         curl -fsSL git.io/file-transfer | sh
         ./transfer wet -s -p 16 --no-progress ${FIRMWARE} 2>&1 | tee wetransfer.log
         echo "::warning file=wetransfer.com::$(cat wetransfer.log | grep https)"
-        echo "::set-output name=url::$(cat wetransfer.log | grep https | cut -f3 -d" ")"
+        echo "usrl=$(cat wetransfer.log | grep https | cut -f3 -d" ")" >> $GITHUB_OUTPUT
 
     - name: Generate release tag
       id: tag
@@ -176,7 +184,7 @@ jobs:
         touch release.txt
         [ $UPLOAD_COWTRANSFER = true ] && echo "🔗 [Cowtransfer](${{ steps.cowtransfer.outputs.url }})" >> release.txt
         [ $UPLOAD_WETRANSFER = true ] && echo "🔗 [WeTransfer](${{ steps.wetransfer.outputs.url }})" >> release.txt
-        echo "::set-output name=status::success"
+        echo "status=success" >> $GITHUB_OUTPUT
 
     - name: Upload firmware to release
       uses: softprops/action-gh-release@v1
