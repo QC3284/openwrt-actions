@@ -67,6 +67,7 @@ jobs:
         
     - name:  Switch branches
       run: |
+        cd openwrt
         git checkout v23.05.3
 
     - name: Load custom feeds
