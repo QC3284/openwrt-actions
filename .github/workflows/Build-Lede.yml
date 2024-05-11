@@ -12,7 +12,7 @@ name: Build Openwrt
 
 on:
   schedule:
-    - cron: 0 20 * * 6
+    - cron: 0 1 * * 6
   repository_dispatch:
   workflow_dispatch:
     inputs:
@@ -116,7 +116,7 @@ jobs:
       id: package
       run: |
         cd openwrt
-        make download -j
+        make download -j16
         find dl -size -1024c -exec ls -l {} \;
         find dl -size -1024c -exec rm -f {} \;
 
