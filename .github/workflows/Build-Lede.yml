@@ -116,7 +116,7 @@ jobs:
       id: package
       run: |
         cd openwrt
-        make download -j8 V=99
+        make download -j
         find dl -size -1024c -exec ls -l {} \;
         find dl -size -1024c -exec rm -f {} \;
 
@@ -125,7 +125,7 @@ jobs:
       run: |
         cd openwrt
         echo -e "$(nproc) thread compile"
-        make -j8 V=99 || make -j8 V=99 || make -j8 V=99
+        make -j8 || make -j8 || make -j8
         echo "status=success" >> $GITHUB_STATE
         grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
         [ -s DEVICE_NAME ] && echo "DEVICE_NAME=_$(cat DEVICE_NAME)" >> $GITHUB_ENV
