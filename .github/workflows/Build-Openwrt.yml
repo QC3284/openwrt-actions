@@ -66,7 +66,6 @@ jobs:
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
         cd openwrt
         git pull
-        git checkout v23.05.4
         
 #    - name: 拉取插件 (Pull plug-in)
 #      run: |
@@ -121,6 +120,8 @@ jobs:
       run: |
          cd openwrt
          wget https://downloads.openwrt.org/releases/23.05.4/targets/ramips/mt7621/feeds.buildinfo -O .config
+         sudo rm -rf feeds.conf.default
+         wget https://downloads.openwrt.org/releases/23.05.4/targets/ramips/mt7621/feeds.buildinfo -O feeds.conf.default
          echo " 下载完成 (Download complete)"
 
     - name: 下载包 (Download package (dl library))
