@@ -53,6 +53,7 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y libfuse-dev neofetch 7zip
         sudo apt update
+        sudo apt install -y ack antlr3 asciidoc autoconf automake autopoint binutils bison build-essential bzip2 ccache cmake cpio curl device-tree-compiler fastjar flex gawk gettext gcc-multilib g++-multilib git gperf haveged help2man intltool libc6-dev-i386 libelf-dev libfuse-dev libglib2.0-dev libgmp3-dev libltdl-dev libmpc-dev libmpfr-dev libncurses5-dev libncursesw5-dev libpython3-dev libreadline-dev libssl-dev libtool lrzsz mkisofs msmtp ninja-build p7zip p7zip-full patch pkgconf python2.7 python3 python3-pyelftools python3-setuptools qemu-utils rsync scons squashfs-tools subversion swig texinfo uglifyjs upx-ucl unzip vim wget xmlto xxd zlib1g-dev
         sudo apt install -y ack antlr3 aria2 asciidoc autoconf automake autopoint binutils bison build-essential bzip2 ccache cmake cpio curl device-tree-compiler fastjar flex gawk gettext gcc-multilib g++-multilib git gperf haveged help2man intltool libc6-dev-i386 libelf-dev libglib2.0-dev libgmp3-dev libltdl-dev libmpc-dev libmpfr-dev libncurses5-dev libncursesw5-dev libreadline-dev libssl-dev libtool lrzsz mkisofs msmtp nano ninja-build p7zip p7zip-full patch pkgconf python2.7 python3 python3-pip libpython3-dev qemu-utils rsync scons squashfs-tools subversion swig texinfo uglifyjs upx-ucl unzip vim wget xmlto xxd zlib1g-dev
         sudo apt full-upgrade -y
         sudo neofetch
@@ -62,7 +63,7 @@ jobs:
       working-directory: /workdir
       run: |
         df -hT $PWD 
-        git clone https://git.openwrt.org/openwrt/openwrt.git
+        git clone https://github.com/coolsnowwolf/lede.git openwrt
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
         cd openwrt
         git pull
@@ -108,7 +109,13 @@ jobs:
     - name: 更新Feed (Update Feed)
       run: |
         cd openwrt
-        ./scripts/feeds update -a
+        sed -i '1i src-git kenzo https://github.com/kenzok8/openwrt-packages' feeds.conf.default
+        sed -i '2i src-git small https://github.com/kenzok8/small' feeds.conf.default
+        ./scripts/feeds update -a && sudo rm -rf feeds/luci/applications/luci-app-mosdns
+        sudo rm -rf feeds/packages/net/{alist,adguardhome,mosdns,xray*,v2ray*,v2ray*,sing*,smartdns}
+        sudo rm -rf feeds/packages/utils/v2dat
+        sudo rm -rf feeds/packages/lang/golang
+        git clone https://github.com/kenzok8/golang.git feeds/packages/lang/golang
     
     - name: 安装Feed (Install Feed)
       run: |
@@ -119,9 +126,7 @@ jobs:
     - name: 下载配置 (Download Config (.config))
       run: |
          cd openwrt
-         wget https://downloads.openwrt.org/releases/23.05.4/targets/ramips/mt7621/feeds.buildinfo -O .config
-         sudo rm -rf feeds.conf.default
-         wget https://downloads.openwrt.org/releases/23.05.4/targets/ramips/mt7621/feeds.buildinfo -O feeds.conf.default
+         wget https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/lede-actions-001.config -O .config
          echo " 下载完成 (Download complete)"
 
     - name: 下载包 (Download package (dl library))
