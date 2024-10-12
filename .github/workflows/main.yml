@@ -3,7 +3,7 @@
 #本仓库地址：https://github.com/QC3284/openwrt-actions
 #最后更新时间：2024.10.12
 
-name: 编译openwrtwrt (Compile openwrt)
+name: 编译openwrt (Compile openwrt)
 
 on:
   schedule:
