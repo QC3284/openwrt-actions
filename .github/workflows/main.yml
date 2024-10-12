@@ -1,9 +1,9 @@
 #本仓库及文件只在Github发布
 #作者：QC3284@github.com(https://github.com/QC3284)
-#本仓库地址：https://github.com/QC3284/x-wrt-actions
+#本仓库地址：https://github.com/QC3284/openwrt-actions
 #最后更新时间：2024.10.12
 
-name: 编译X-wrt (Compile X-wrt)
+name: 编译openwrtwrt (Compile openwrt)
 
 on:
   schedule:
@@ -59,7 +59,10 @@ jobs:
         sudo apt upgrade -y
         sudo apt update
         sudo apt install build-essential ecj fastjar file flex g++ gcc-multilib g++-multilib gawk gettext git git-core java-propose-classpath libelf-dev libncurses5-dev libncursesw5-dev libssl-dev swig python3 python3-pip python3-dev python3-distutils python3-pyelftools subversion unzip wget zlib1g-dev rsync qemu-utils zip -y
-        sudo apt-get update
+        sudo apt -y install lib32gcc-s1 
+        sudo apt update -y
+        sudo apt full-upgrade -y
+        sudo apt install -y ack antlr3 asciidoc autoconf automake autopoint binutils bison build-essential bzip2 ccache cmake cpio curl device-tree-compiler fastjar flex gawk gettext gcc-multilib g++-multilib git gperf haveged help2man intltool libc6-dev-i386 libelf-dev libfuse-dev libglib2.0-dev libgmp3-dev libltdl-dev libmpc-dev libmpfr-dev libncurses5-dev libncursesw5-dev libpython3-dev libreadline-dev libssl-dev libtool lrzsz mkisofs msmtp ninja-build p7zip p7zip-full patch pkgconf python3-full qemu-utils rsync scons squashfs-tools subversion swig texinfo uglifyjs upx-ucl unzip vim wget xmlto xxd zlib1g-dev
         sudo apt-get install -y libfuse-dev neofetch 7zip
         sudo apt update
         sudo apt full-upgrade -y
@@ -71,13 +74,10 @@ jobs:
       working-directory: /workdir
       run: |
         df -hT $PWD 
-        git clone https://github.com/x-wrt/x-wrt.git openwrt
+        git clone -b openwrt-23.05 https://github.com/openwrt/openwrt.git openwrt
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
         cd openwrt
         git pull
-        git fetch origin
-        git fetch origin --tags
-        git checkout -f 24.04_b202410120338
         
     - name: 拉取插件 (Pull plug-in)
       run: |
@@ -90,7 +90,7 @@ jobs:
         cd openwrt/package/base-files/files/etc/
         sudo rm -rf banner
         ls
-        wget https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/x-wrt-banner.txt -O banner
+        wget https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/openwrt-actions-banner-001.txt -O banner
 
 #    - name: 加载自定义 Feed源和更新Feed-01
 #      run: |
@@ -109,6 +109,7 @@ jobs:
     - name: 更新Feed (Update Feed)
       run: |
         cd openwrt
+        curl -sSL https://raw.githubusercontent.com/chenmozhijin/turboacc/luci/add_turboacc.sh -o add_turboacc.sh && bash add_turboacc.sh --no-sfe
         curl https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/x-wrt-git-002.sh | bash
         ./scripts/feeds update -a
         curl https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/x-wrt-git-003.sh | bash
@@ -122,7 +123,7 @@ jobs:
     - name: 下载配置 (Download Config (.config))
       run: |
          cd openwrt
-         wget https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/x-wrt-actions-016.config -O .config
+         wget https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/openwrt-actions-03.config -O .config
          echo " 下载完成 (Download complete)"
 
     - name: 下载包 (Download package (dl library))
@@ -148,14 +149,6 @@ jobs:
          echo "压缩bin目录...... (Compressing bin directories ......)"
          7zz a -mx=9 -mmt=8 bin.zip bin
          mv bin.zip bin/targets/ramips/mt7621/
-         cd bin/targets/ramips/mt7621/
-         wget https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/downloadurl.txt
-         wget https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/downloader.py
-         python3 downloader.py
-         sleep 3
-         sudo rm -rf downloadurl.txt
-         sudo rm -rf downloader.py
-         curl https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/x-wrt-git-004.sh | bash
          echo "完成 (Finished.)"
 
     - name: 检查空间使用情况 (Check space usage)
@@ -190,7 +183,7 @@ jobs:
       run: |
         echo "release_tag=$(date +"%Y.%m.%d-%H%M")" >> $GITHUB_OUTPUT
         touch release.txt
-        curl https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/x-wrt-actions-txt-001.sh | bash
+        echo "自动编译" >> release.txt
         echo "status=success" >> $GITHUB_OUTPUT
 
     - name: 上传固件以发布 (Upload firmware for release)
