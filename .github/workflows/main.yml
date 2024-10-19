@@ -82,7 +82,9 @@ jobs:
     - name: 拉取插件 (Pull plug-in)
       run: |
         cd openwrt/package/
-        curl https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/x-wrt-git-001.sh | bash
+        wget https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/gitcj.py
+        wget https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/giturl.txt
+        python3 gitcj.py
         sleep 3
         
     - name: 下载横幅 (Download banner)
