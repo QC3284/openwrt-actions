@@ -111,7 +111,6 @@ jobs:
     - name: 更新Feed (Update Feed)
       run: |
         cd openwrt
-        curl -sSL https://raw.githubusercontent.com/chenmozhijin/turboacc/luci/add_turboacc.sh -o add_turboacc.sh && bash add_turboacc.sh --no-sfe
         curl https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/openwrt-ip.sh | bash
         ./scripts/feeds update -a
         curl https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/x-wrt-git-003.sh | bash
