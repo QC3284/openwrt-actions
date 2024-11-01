@@ -113,7 +113,6 @@ jobs:
         cd openwrt
         curl https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/openwrt-ip.sh | bash
         ./scripts/feeds update -a
-        curl https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/x-wrt-git-003.sh | bash
         
     - name: 安装Feed (Install Feed)
       run: |
