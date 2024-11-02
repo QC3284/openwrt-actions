@@ -7,7 +7,7 @@ name: 编译openwrt (Compile openwrt)
 
 on:
   schedule:
-    - cron: 0 3 * * 2,4,6
+    - cron: 0 3 * * 3,6
   repository_dispatch:
   workflow_dispatch:
     inputs:
