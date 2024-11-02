@@ -113,7 +113,7 @@ jobs:
         cd openwrt
         curl https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/openwrt-ip.sh | bash
         ./scripts/feeds update -a
-        curl https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/x-wrt-git-003.sh | bash
+        curl https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/openwrtci.sh | bash
         
     - name: 安装Feed (Install Feed)
       run: |
@@ -124,7 +124,7 @@ jobs:
     - name: 下载配置 (Download Config (.config))
       run: |
          cd openwrt
-         wget https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/openwrt-actions-06.config -O .config
+         wget https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/openwrt-actions-07.config -O .config
          echo " 下载完成 (Download complete)"
 
     - name: 下载包 (Download package (dl library))
