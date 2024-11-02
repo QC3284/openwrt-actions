@@ -56,7 +56,6 @@ jobs:
       run: |
         echo Start
         sleep 3
-        docker rmi `docker images -q`
         sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc /etc/mysql /etc/php
         sudo -E apt-get -y purge azure-cli* docker* ghc* zulu* hhvm* llvm* firefox* google* dotnet* aspnetcore* powershell* openjdk* adoptopenjdk* mysql* php* mongodb* moby* snap* || true
         sudo -E apt-get -qq update
