@@ -1,7 +1,7 @@
 #本仓库及文件只在Github发布
 #作者：QC3284@github.com(https://github.com/QC3284)
-#本仓库地址：https://github.com/QC3284/x-wrt-actions
-#最后更新时间：2024.12.1
+#本仓库地址：https://github.com/QC3284/openwrt-actions
+#最后更新时间：2024.12.07
 
 name: 编译X-wrt (Compile X-wrt)
 
