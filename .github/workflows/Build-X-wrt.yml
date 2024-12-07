@@ -158,7 +158,8 @@ jobs:
          sleep 10
          echo "开始编译"
          echo -e "$(nproc) thread compile"
-         make -j$(nproc) 2>&1 | tee make.log
+         echo "编译已开始，日志见文件 make.log"
+         make -j$(nproc) > make.log
          echo "status=success" >> $GITHUB_STATE
          grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
          [ -s DEVICE_NAME ] && echo "DEVICE_NAME=_$(cat DEVICE_NAME)" >> $GITHUB_ENV
@@ -230,7 +231,7 @@ jobs:
       if: env.UPLOAD_RELEASE == 'true' && !cancelled()
       with:
         delete_releases: true
-        releases_keep_latest: 7
+        releases_keep_latest: 25
         delete_workflows: true
         workflows_keep_day: 30
         gh_token: ${{ secrets.GITHUB_TOKEN }}

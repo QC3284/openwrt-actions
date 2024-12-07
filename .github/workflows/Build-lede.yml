@@ -184,17 +184,12 @@ jobs:
         body_path: release.txt
         files: ${{ env.FIRMWARE }}/*
      
-    - name: 删除工作流运行 (Delete workflow run)
-      uses: GitRML/delete-workflow-runs@main
-      with:
-        retain_days: 1
-        keep_minimum_runs: 3
-
-    - name: 删除旧版本 (Delete old version)
-      uses: dev-drprasad/delete-older-releases@v0.1.0
+    - name: 删除旧版本和删除工作流运行 (Delete old version and Delete workflow run)
+      uses: ophub/delete-releases-workflows@main
       if: env.UPLOAD_RELEASE == 'true' && !cancelled()
       with:
-        keep_latest: 6
-        delete_tags: ture
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        delete_releases: true
+        releases_keep_latest: 25
+        delete_workflows: true
+        workflows_keep_day: 30
+        gh_token: ${{ secrets.GITHUB_TOKEN }}
