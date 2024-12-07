@@ -100,7 +100,7 @@ jobs:
         sleep 3       
         
     - name: 下载横幅 (Download banner)
-     run: |
+      run: |
        cd openwrt/package/base-files/files/etc/
        sudo rm -rf banner
        ls
