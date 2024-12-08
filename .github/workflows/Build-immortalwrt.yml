@@ -1,7 +1,7 @@
 #本仓库及文件只在Github发布
 #作者：QC3284@github.com(https://github.com/QC3284)
 #本仓库地址：https://github.com/QC3284/openwrt-actions
-#最后更新时间：2024.12.07
+#最后更新时间：2024.12.08
 
 name: 编译immortalwrt (Compile immortalwrt)
 
@@ -90,14 +90,15 @@ jobs:
         df -hT $PWD 
         git clone https://github.com/immortalwrt/immortalwrt.git openwrt
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
+        git pull
         cd openwrt
         git checkout v23.05.4
         
-    - name: 拉取插件 (Pull plug-in)
-      run: |
-        cd openwrt
-        curl -sSL https://raw.githubusercontent.com/chenmozhijin/turboacc/luci/add_turboacc.sh -o add_turboacc.sh && bash add_turboacc.sh --no-sfe
-        sleep 3       
+#    - name: 拉取插件 (Pull plug-in)
+#      run: |
+#        cd openwrt
+#        curl -sSL https://raw.githubusercontent.com/chenmozhijin/turboacc/luci/add_turboacc.sh -o add_turboacc.sh && bash add_turboacc.sh --no-sfe
+#        sleep 3       
         
     - name: 下载横幅 (Download banner)
       run: |
@@ -137,7 +138,7 @@ jobs:
     - name: 下载配置 (Download Config (.config))
       run: |
          cd openwrt
-         wget https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/immortalwrt-actions-001.config -O .config
+         wget https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/immortalwrt-actions-002.config -O .config
          echo " 下载完成 (Download complete)"
 
     - name: 下载包 (Download package (dl library))
