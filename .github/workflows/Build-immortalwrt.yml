@@ -90,8 +90,8 @@ jobs:
         df -hT $PWD 
         git clone https://github.com/immortalwrt/immortalwrt.git openwrt
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
-        git pull
         cd openwrt
+        git pull
         git checkout v23.05.4
         
 #    - name: 拉取插件 (Pull plug-in)
