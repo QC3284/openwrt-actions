@@ -97,12 +97,15 @@ jobs:
         
     - name: 拉取插件 (Pull plug-in)
       run: |
-        cd openwrt/
+        cd openwrt
         curl https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/x-wrt-git-001.sh | bash
-        cd package/
+        cd package
         wget https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/gitcj.py
         wget https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/giturl.txt
         python3 gitcj.py
+        mv accesscontrol-plus/luci-app-accesscontrol-plus ./
+        sleep 2
+        sudo rm -rf accesscontrol-plus
         sleep 3
         
     - name: 下载横幅 (Download banner)
@@ -131,9 +134,7 @@ jobs:
         cd openwrt
         curl https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/x-wrt-git-002.sh | bash
         ./scripts/feeds update -a
-        sudo rm -rf feeds/packages/net/adguardhome
-        cp -r opldf/adguardhome feeds/packages/net/
-        sudo rm -rf opldf
+        curl https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/x-wrt-git-005.sh | bash
         curl https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/x-wrt-git-003.sh | bash
         
     - name: 安装Feed (Install Feed)
