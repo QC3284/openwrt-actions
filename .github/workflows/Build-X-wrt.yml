@@ -180,8 +180,6 @@ jobs:
          wget https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/downloader.py
          python3 downloader.py
          sleep 3
-         sudo rm -rf downloadurl.txt
-         sudo rm -rf downloader.py
          curl https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/x-wrt-git-004.sh | bash
          echo "完成 (Finished.)"
 
