@@ -97,7 +97,8 @@ jobs:
         
     - name: 拉取插件 (Pull plug-in)
       run: |
-        cd openwrt/package/
+        sudo rm -rf openwrt/feeds/packages/net/adguardhome
+        cd openwrt
         wget https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/gitcj.py
         wget https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/giturl.txt
         python3 gitcj.py
