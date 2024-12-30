@@ -98,6 +98,8 @@ jobs:
     - name: 拉取插件 (Pull plug-in)
       run: |
         sudo rm -rf openwrt/feeds/packages/net/adguardhome
+        sudo rm -rf openwrt/feeds/luci/applications/luci-app-adguardhome
+        curl https://raw.githubusercontent.com/QC3284/openwrt-actions-config/x-wrt-git-001.sh | bash
         cd openwrt
         wget https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/gitcj.py
         wget https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/giturl.txt
