@@ -97,10 +97,9 @@ jobs:
         
     - name: 拉取插件 (Pull plug-in)
       run: |
-        sudo rm -rf openwrt/feeds/packages/net/adguardhome
-        sudo rm -rf openwrt/feeds/luci/applications/luci-app-adguardhome
-        curl https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/x-wrt-git-001.sh | bash
-        cd openwrt
+        cd openwrt/
+        curl https://raw.githubusercontent.com/QC32824/openwrt-actions-config/main/x-wrt-git-001.sh | bash
+        cd package/
         wget https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/gitcj.py
         wget https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/giturl.txt
         python3 gitcj.py
@@ -132,6 +131,9 @@ jobs:
         cd openwrt
         curl https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/x-wrt-git-002.sh | bash
         ./scripts/feeds update -a
+        sudo rm -rf feeds/packages/net/adguardhome
+        cp -r opldf/adguardhome feeds/packages/net/
+        sudo rm -rf opldf
         curl https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/x-wrt-git-003.sh | bash
         
     - name: 安装Feed (Install Feed)
