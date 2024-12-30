@@ -131,9 +131,6 @@ jobs:
         cd openwrt
         curl https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/x-wrt-git-002.sh | bash
         ./scripts/feeds update -a
-        sudo rm -rf feeds/packages/net/adguardhome
-        cp -r opldf/adguardhome feeds/packages/net/
-        sudo rm -rf opldf
         curl https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/x-wrt-git-003.sh | bash
         
     - name: 安装Feed (Install Feed)
