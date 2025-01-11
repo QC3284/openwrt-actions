@@ -1,7 +1,7 @@
 #本仓库及文件只在Github发布
 #作者：QC3284@github.com(https://github.com/QC3284)
 #本仓库地址：https://github.com/QC3284/openwrt-actions
-#最后更新时间：2024.12.31
+#最后更新时间：2025.1.12
 
 name: 编译X-wrt (Compile X-wrt)
 
@@ -146,7 +146,7 @@ jobs:
     - name: 下载配置 (Download Config (.config))
       run: |
          cd openwrt
-         wget https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/x-wrt-actions-24.04_b202412271104.config -O .config
+         wget https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/x-wrt-actions-25.01_b202501060948.config -O .config
          echo " 下载完成 (Download complete)"
 
     - name: 下载包 (Download package (dl library))
