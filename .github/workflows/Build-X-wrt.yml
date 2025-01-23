@@ -1,7 +1,16 @@
+#
+# https://github.com/QC3284/openwrt-actions
+# File name: Build-X-wrt.yml
+#
+# Copyright (c) 2024-2025 QC3284 <https://www.xcqcoo.us.kg>
+#
+# This is free software, licensed under the GPL-3.0 License.
+# See /LICENSE for more information.
+#
 #本仓库及文件只在Github发布
 #作者：QC3284@github.com(https://github.com/QC3284)
 #本仓库地址：https://github.com/QC3284/openwrt-actions
-#最后更新时间：2025.1.12
+#最后更新时间：2025.1.24
 
 name: 编译X-wrt (Compile X-wrt)
 
@@ -134,8 +143,8 @@ jobs:
         cd openwrt
         curl https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/x-wrt-git-002.sh | bash
         ./scripts/feeds update -a
-        curl https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/x-wrt-git-005.sh | bash
-        curl https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/x-wrt-git-003.sh | bash
+#        curl https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/x-wrt-git-005.sh | bash
+#        curl https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/x-wrt-git-003.sh | bash
         
     - name: 安装Feed (Install Feed)
       run: |
@@ -146,7 +155,7 @@ jobs:
     - name: 下载配置 (Download Config (.config))
       run: |
          cd openwrt
-         wget https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/x-wrt-actions-25.01_b202501060948.config -O .config
+         wget https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/x-wrt-actions-25.01_b202501191038.config -O .config
          echo " 下载完成 (Download complete)"
 
     - name: 下载包 (Download package (dl library))
