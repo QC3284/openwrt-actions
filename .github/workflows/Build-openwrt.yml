@@ -10,7 +10,7 @@
 #本仓库及文件只在Github发布
 #作者：QC3284@github.com(https://github.com/QC3284)
 #本仓库地址：https://github.com/QC3284/openwrt-actions
-#最后更新时间：2024.1.24
+#最后更新时间：2025.2.4
 
 name: 编译openwrt (Compile openwrt)
 
@@ -100,7 +100,7 @@ jobs:
       working-directory: /workdir
       run: |
         df -hT $PWD 
-        git clone -b openwrt-23.05 https://github.com/openwrt/openwrt.git openwrt
+        git clone -b openwrt-23.05 https://git.openwrt.org/openwrt/openwrt.git openwrt
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
         cd openwrt
         git pull
@@ -118,7 +118,7 @@ jobs:
         cd openwrt/package/base-files/files/etc/
         sudo rm -rf banner
         ls
-        wget https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/openwrt-actions-banner-001.txt -O banner
+        wget https://raw.githubusercontent.com/QC3284/openwrt-actions-config/refs/heads/main/openwrt-actions-banner-001.txt -O banner
 
 #    - name: 加载自定义 Feed源和更新Feed-01
 #      run: |
@@ -137,9 +137,9 @@ jobs:
     - name: 更新Feed (Update Feed)
       run: |
         cd openwrt
-        curl https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/openwrt-ip.sh | bash
+        curl https://raw.githubusercontent.com/QC3284/openwrt-actions-config/refs/heads/main/openwrt-ip.sh | bash
         ./scripts/feeds update -a
-        curl https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/openwrtci.sh | bash
+        curl https://raw.githubusercontent.com/QC3284/openwrt-actions-config/refs/heads/main/openwrtci.sh | bash
         
     - name: 安装Feed (Install Feed)
       run: |
@@ -150,14 +150,14 @@ jobs:
     - name: 下载配置 (Download Config (.config))
       run: |
          cd openwrt
-         wget https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/openwrt-actions-07.config -O .config
+         wget https://raw.githubusercontent.com/QC3284/openwrt-actions-config/refs/heads/main/openwrt-actions-23.05-01.config -O .config
          echo " 下载完成 (Download complete)"
 
     - name: 下载包 (Download package (dl library))
       run: |
          sudo neofetch
          cd openwrt
-         curl https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/x-wrt-make-001.sh | bash
+         curl https://raw.githubusercontent.com/QC3284/openwrt-actions-config/refs/heads/main/x-wrt-make-001.sh | bash
 
     - name: 编译固件 (Compile Firmware)
       run: |
