@@ -10,7 +10,7 @@
 #本仓库及文件只在Github发布
 #作者：QC3284@github.com(https://github.com/QC3284)
 #本仓库地址：https://github.com/QC3284/openwrt-actions
-#最后更新时间：2025.1.24
+#最后更新时间：2025.2.9
 
 name: 编译X-wrt (Compile X-wrt)
 
@@ -85,7 +85,7 @@ jobs:
         sleep 5
         sudo -E apt update
         sudo -E apt upgrade -y
-        sudo -E apt install build-essential ecj fastjar file flex g++ gcc-multilib g++-multilib gawk gettext git git-core java-propose-classpath libelf-dev libncurses5-dev libncursesw5-dev libssl-dev swig python3 python3-pip python3-dev python3-setuptools python3-pyelftools subversion unzip wget zlib1g-dev rsync qemu-utils zip -y
+        sudo -E apt install build-essential ecj fastjar file flex g++ gcc-multilib g++-multilib gawk gettext git git-core java-propose-classpath libelf-dev libncurses5-dev libncursesw5-dev libssl-dev swig python3 python3-pip python3-dev python3-setuptools python3-pyelftools subversion unzip wget zlib1g-dev curl wget rsync qemu-utils zip -y
         sudo -E apt-get install -y libfuse-dev neofetch 7zip
         sudo -E apt full-upgrade -y
         pip install requests tqdm
