@@ -102,7 +102,8 @@ jobs:
         git pull
         git fetch origin
         git fetch origin --tags
-        git checkout 25.01_b202501191038
+        git checkout $(curl "https://raw.githubusercontent.com/QC3284/openwrt-actions-config/refs/heads/main/x-wrt-config-tag.txt")
+         
         
     - name: 拉取插件 (Pull plug-in)
       run: |
@@ -141,8 +142,8 @@ jobs:
     - name: 更新Feed (Update Feed)
       run: |
         cd openwrt
-        curl https://raw.githubusercontent.com/QC3284/openwrt-actions-config/refs/heads/main/x-wrt-git-002.sh | bash
         ./scripts/feeds update -a
+#        curl https://raw.githubusercontent.com/QC3284/openwrt-actions-config/refs/heads/main/x-wrt-git-002.sh | bash
 #        curl https://raw.githubusercontent.com/QC3284/openwrt-actions-config/refs/heads/main/x-wrt-git-005.sh | bash
 #        curl https://raw.githubusercontent.com/QC3284/openwrt-actions-config/refs/heads/main/x-wrt-git-003.sh | bash
         
@@ -155,8 +156,7 @@ jobs:
     - name: 下载配置 (Download Config (.config))
       run: |
          cd openwrt
-         wget https://raw.githubusercontent.com/QC3284/openwrt-actions-config/refs/heads/main/$(curl "https://raw.githubusercontent.com/QC3284/openwrt-actions-config/refs/heads/main/x-wrt-config-name.txt") -O .config
-         rm -rf x-wrt-config-name.txt
+         wget https://raw.githubusercontent.com/QC3284/openwrt-actions-config/refs/heads/main/x-wrt-actions-$(curl "https://raw.githubusercontent.com/QC3284/openwrt-actions-config/refs/heads/main/x-wrt-config-tag.txt").config -O .config
          echo " 下载完成 (Download complete)"
 
     - name: 下载包 (Download package (dl library))
