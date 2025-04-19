@@ -10,7 +10,7 @@
 #本仓库及文件只在Github发布
 #作者：QC3284@github.com(https://github.com/QC3284)
 #本仓库地址：https://github.com/QC3284/openwrt-actions
-#最后更新时间：2025.2.9
+#最后更新时间：2025.4.19
 
 name: 编译X-wrt (Compile X-wrt)
 
@@ -155,7 +155,8 @@ jobs:
     - name: 下载配置 (Download Config (.config))
       run: |
          cd openwrt
-         wget https://raw.githubusercontent.com/QC3284/openwrt-actions-config/refs/heads/main/x-wrt-actions-25.01_b202501191038.config -O .config
+         wget https://raw.githubusercontent.com/QC3284/openwrt-actions-config/refs/heads/main/$(curl "https://raw.githubusercontent.com/QC3284/openwrt-actions-config/refs/heads/main/x-wrt-config-name.txt") -O .config
+         rm -rf x-wrt-config-name.txt
          echo " 下载完成 (Download complete)"
 
     - name: 下载包 (Download package (dl library))
@@ -184,13 +185,13 @@ jobs:
          mv bin.7z bin/targets/ramips/mt7621/
          mv make_download.log bin/targets/ramips/mt7621/
          mv make.log bin/targets/ramips/mt7621/
-         cd bin/targets/ramips/mt7621/
-         wget https://raw.githubusercontent.com/QC3284/openwrt-actions-config/refs/heads/main/downloadurl.txt
-         wget https://raw.githubusercontent.com/QC3284/openwrt-actions-config/refs/heads/main/downloader.py
-         python3 downloader.py
-         sleep 3
-         curl https://raw.githubusercontent.com/QC3284/openwrt-actions-config/refs/heads/main/x-wrt-git-004.sh | bash
          echo "完成 (Finished.)"
+#         cd bin/targets/ramips/mt7621/
+#         wget https://raw.githubusercontent.com/QC3284/openwrt-actions-config/refs/heads/main/downloadurl.txt
+#         wget https://raw.githubusercontent.com/QC3284/openwrt-actions-config/refs/heads/main/downloader.py
+#         python3 downloader.py
+#         sleep 3
+#         curl https://raw.githubusercontent.com/QC3284/openwrt-actions-config/refs/heads/main/x-wrt-git-004.sh | bash
 
     - name: 检查空间使用情况 (Check space usage)
       if: (!cancelled())
