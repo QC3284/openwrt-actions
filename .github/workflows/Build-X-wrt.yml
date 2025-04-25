@@ -26,18 +26,14 @@ on:
         default: 'false'
 
 env:
-  FEEDS_CONF: feeds.conf.default
-  CONFIG_FILE: .config
   UPLOAD_BIN_DIR: true
   UPLOAD_FIRMWARE: true
-  UPLOAD_COWTRANSFER: true
-  UPLOAD_WETRANSFER: true
   UPLOAD_RELEASE: true
   TZ: Asia/Shanghai
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
 
     steps:
     - name: Checkout
@@ -59,20 +55,16 @@ jobs:
         docker-images: true
         swap-storage: true
 
-    - name: Initialization environment
+    - name: 准备环境 (Prepare the environment)
       env:
         DEBIAN_FRONTEND: noninteractive
       run: |
         echo Start
         sleep 3
         sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc
-        sudo rm -rf \
-          /usr/share/dotnet \
-          /etc/mysql \
-          /etc/php
-        sudo -E apt-get -qq update
-        sudo -E apt-get -qq autoremove --purge
-        sudo -E apt-get -qq clean
+        sudo rm -rf /usr/share/dotnet
+        sudo rm -rf /etc/mysql
+        sudo rm -rf /etc/php
         sudo timedatectl set-timezone "$TZ"
         sudo mkdir -p /workdir
         sudo chown $USER:$GROUPS /workdir
@@ -125,20 +117,6 @@ jobs:
         ls
         wget https://raw.githubusercontent.com/QC3284/openwrt-actions-config/refs/heads/main/x-wrt-banner.txt -O banner
 
-#    - name: 加载自定义 Feed源和更新Feed-01
-#      run: |
-#         cd openwrt
-#         sed -i 's/192.168.15.1/192.168.5.1/g' package/base-files/files/bin/config_generate
-#         sed -i '1i src-git kenzo https://github.com/kenzok8/openwrt-packages' feeds.conf.default
-#         sed -i '2i src-git small https://github.com/kenzok8/small' feeds.conf.default
-#         ./scripts/feeds update -a && sudo rm -rf feeds/luci/applications/luci-app-mosdns && sudo rm -rf feeds/kenzo/luci-app-smartdns && sudo rm -rf feeds/luci/applications/luci-app-smartdns
-#         sudo rm -rf feeds/packages/net/{alist,adguardhome,mosdns,xray*,v2ray*,v2ray*,sing*,smartdns}
-#         sudo rm -rf feeds/packages/utils/v2dat
-#         sudo rm -rf feeds/packages/lang/golang
-#         git clone https://github.com/kenzok8/golang feeds/packages/lang/golang
-#         git clone https://github.com/pymumu/openwrt-smartdns feeds/packages/net/smartdns
-#         git clone https://github.com/pymumu/luci-app-smartdns feeds/luci/applications/luci-app-smartdns
-
     - name: 更新Feed (Update Feed)
       run: |
         cd openwrt
@@ -164,9 +142,17 @@ jobs:
          sudo neofetch
          cd openwrt
          curl https://raw.githubusercontent.com/QC3284/openwrt-actions-config/refs/heads/main/x-wrt-make-001.sh | bash
+    
+    - name: 压缩已准备好的编译目录 (Compress the prepared compilation directory)
+      run: |
+          echo "Start"
+          7zz a -mx=9 -mmt=8 "x-wrt-compilation-directory-$(curl "https://raw.githubusercontent.com/QC3284/openwrt-actions-config/refs/heads/main/x-wrt-config-tag.txt").7z" openwrt
+          sleep 2
+          echo "All Done"
 
     - name: 编译固件 (Compile Firmware)
       run: |
+         mv "x-wrt-compilation-directory-$(curl "https://raw.githubusercontent.com/QC3284/openwrt-actions-config/refs/heads/main/x-wrt-config-tag.txt").7z" openwrt/
          cd openwrt
          sudo neofetch
          make -version
@@ -185,6 +171,7 @@ jobs:
          mv bin.7z bin/targets/ramips/mt7621/
          mv make_download.log bin/targets/ramips/mt7621/
          mv make.log bin/targets/ramips/mt7621/
+         mv "x-wrt-compilation-directory-$(curl "https://raw.githubusercontent.com/QC3284/openwrt-actions-config/refs/heads/main/x-wrt-config-tag.txt").7z" bin/targets/ramips/mt7621/
          echo "完成 (Finished.)"
 #         cd bin/targets/ramips/mt7621/
 #         wget https://raw.githubusercontent.com/QC3284/openwrt-actions-config/refs/heads/main/downloadurl.txt
@@ -198,11 +185,11 @@ jobs:
       run: df -hT
 
     - name:  上传bin目录 (Upload bin directory)
-      uses: actions/upload-artifact@main
+      uses: actions/upload-artifact@v4
       with:
         name: OpenWrt_bin${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
         path: openwrt/bin
-        compression-level: 9
+        compression-level: 6
 
     - name: 整理文件 (Sort out documents)
       id: organize
@@ -214,7 +201,7 @@ jobs:
         echo "status=success" >> $GITHUB_OUTPUT
 
     - name: 上传固件目录 (Uploading Firmware Directory)
-      uses: actions/upload-artifact@main
+      uses: actions/upload-artifact@v4
       if: steps.organize.outputs.status == 'success' && !cancelled()
       with:
         name: OpenWrt_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
