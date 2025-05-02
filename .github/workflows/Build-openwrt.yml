@@ -100,40 +100,29 @@ jobs:
       working-directory: /workdir
       run: |
         df -hT $PWD 
-        git clone -b openwrt-23.05 https://git.openwrt.org/openwrt/openwrt.git openwrt
+        git clone -b openwrt-24.10 https://git.openwrt.org/openwrt/openwrt.git openwrt
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
         cd openwrt
         git pull
         
-#    - name: 拉取插件 (Pull plug-in)
-#      run: |
-#        cd openwrt/package/
-#        wget https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/gitcj.py
-#        wget https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/giturl.txt
-#        python3 gitcj.py
-#        sleep 3
-#        
+    - name: 拉取插件 (Pull plug-in)
+      run: |
+        cd package
+        wget https://raw.githubusercontent.com/QC3284/openwrt-actions-config/refs/heads/main/gitcj.py
+        wget https://raw.githubusercontent.com/QC3284/openwrt-actions-config/refs/heads/main/giturl.txt
+        python3 gitcj.py
+        mv accesscontrol-plus/luci-app-accesscontrol-plus ./
+        sleep 2
+        sudo rm -rf accesscontrol-plus
+        sleep 3
+
     - name: 下载横幅 (Download banner)
       run: |
         cd openwrt/package/base-files/files/etc/
         sudo rm -rf banner
         ls
         wget https://raw.githubusercontent.com/QC3284/openwrt-actions-config/refs/heads/main/openwrt-actions-banner-001.txt -O banner
-
-#    - name: 加载自定义 Feed源和更新Feed-01
-#      run: |
-#         cd openwrt
-#         sed -i 's/192.168.15.1/192.168.5.1/g' package/base-files/files/bin/config_generate
-#         sed -i '1i src-git kenzo https://github.com/kenzok8/openwrt-packages' feeds.conf.default
-#         sed -i '2i src-git small https://github.com/kenzok8/small' feeds.conf.default
-#         ./scripts/feeds update -a && sudo rm -rf feeds/luci/applications/luci-app-mosdns && sudo rm -rf feeds/kenzo/luci-app-smartdns && sudo rm -rf feeds/luci/applications/luci-app-smartdns
-#         sudo rm -rf feeds/packages/net/{alist,adguardhome,mosdns,xray*,v2ray*,v2ray*,sing*,smartdns}
-#         sudo rm -rf feeds/packages/utils/v2dat
-#         sudo rm -rf feeds/packages/lang/golang
-#         git clone https://github.com/kenzok8/golang feeds/packages/lang/golang
-#         git clone https://github.com/pymumu/openwrt-smartdns feeds/packages/net/smartdns
-#         git clone https://github.com/pymumu/luci-app-smartdns feeds/luci/applications/luci-app-smartdns
-
+        
     - name: 更新Feed (Update Feed)
       run: |
         cd openwrt
