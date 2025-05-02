@@ -2,7 +2,7 @@
 # https://github.com/QC3284/openwrt-actions
 # File name: Build-openwrt.yml
 #
-# Copyright (c) 2024-2025 QC3284 <https://www.xcqcoo.us.kg>
+# Copyright (c) 2024-2025 QC3284 <https://www.xcqcoo.top>
 #
 # This is free software, licensed under the GPL-3.0 License.
 # See /LICENSE for more information.
@@ -10,7 +10,7 @@
 #本仓库及文件只在Github发布
 #作者：QC3284@github.com(https://github.com/QC3284)
 #本仓库地址：https://github.com/QC3284/openwrt-actions
-#最后更新时间：2025.2.5
+#最后更新时间：2025.5.2
 
 name: 编译openwrt (Compile openwrt)
 
@@ -107,7 +107,8 @@ jobs:
         
     - name: 拉取插件 (Pull plug-in)
       run: |
-        cd package
+        cd openwrt/package
+        git clone https://github.com/QC3284/luci-app-ramfree.git
         wget https://raw.githubusercontent.com/QC3284/openwrt-actions-config/refs/heads/main/gitcj.py
         wget https://raw.githubusercontent.com/QC3284/openwrt-actions-config/refs/heads/main/giturl.txt
         python3 gitcj.py
@@ -128,7 +129,7 @@ jobs:
         cd openwrt
         curl https://raw.githubusercontent.com/QC3284/openwrt-actions-config/refs/heads/main/openwrt-ip.sh | bash
         ./scripts/feeds update -a
-        curl https://raw.githubusercontent.com/QC3284/openwrt-actions-config/refs/heads/main/openwrtci.sh | bash
+#        curl https://raw.githubusercontent.com/QC3284/openwrt-actions-config/refs/heads/main/openwrtci.sh | bash
         
     - name: 安装Feed (Install Feed)
       run: |
@@ -139,7 +140,9 @@ jobs:
     - name: 下载配置 (Download Config (.config))
       run: |
          cd openwrt
-         wget https://raw.githubusercontent.com/QC3284/openwrt-actions-config/refs/heads/main/openwrt-actions-23.05-02.config -O .config
+         cp -af ./feeds/mtk_openwrt_feed/24.10/files/* .
+         for file in $(find ./feeds/mtk_openwrt_feed/24.10/patches-base -name "*.patch" | sort); do patch -f -p1 -i ${file}; done
+         wget https://raw.githubusercontent.com/QC3284/openwrt-actions-config/refs/heads/main/openwrt-actions-24.10-MTK.config -O .config
          echo " 下载完成 (Download complete)"
 
     - name: 下载包 (Download package (dl library))
@@ -157,16 +160,18 @@ jobs:
          sleep 10
          echo "开始编译"
          echo -e "$(nproc) thread compile"
-         make -j$(nproc)  || make -j4 V=s || make -j4 V=99
+         echo "编译已开始，日志文件 make.log"
+         make -j$(nproc) 2>&1 | tee make.log
          echo "status=success" >> $GITHUB_STATE
          grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
          [ -s DEVICE_NAME ] && echo "DEVICE_NAME=_$(cat DEVICE_NAME)" >> $GITHUB_ENV
          echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
          echo "压缩bin目录...... (Compressing bin directories ......)"
-         7zz a -mx=9 -mmt=8 bin.zip bin
-         mv bin.zip bin/targets/ramips/mt7621/
+         7zz a -mx=9 -mmt=8 bin.7z bin
+         mv bin.7z bin/targets/ramips/mt7621/
+         mv make_download.log bin/targets/ramips/mt7621/
+         mv make.log bin/targets/ramips/mt7621/
          echo "完成 (Finished.)"
-
     - name: 检查空间使用情况 (Check space usage)
       if: (!cancelled())
       run: df -hT

@@ -2,7 +2,7 @@
 # https://github.com/QC3284/openwrt-actions
 # File name: Build-X-wrt.yml
 #
-# Copyright (c) 2024-2025 QC3284 <https://www.xcqcoo.us.kg>
+# Copyright (c) 2024-2025 QC3284 <https://www.xcqcoo.top>
 #
 # This is free software, licensed under the GPL-3.0 License.
 # See /LICENSE for more information.
@@ -10,7 +10,7 @@
 #本仓库及文件只在Github发布
 #作者：QC3284@github.com(https://github.com/QC3284)
 #本仓库地址：https://github.com/QC3284/openwrt-actions
-#最后更新时间：2025.4.26
+#最后更新时间：2025.5.2
 
 name: 编译X-wrt (Compile X-wrt)
 
@@ -109,7 +109,7 @@ jobs:
         sleep 2
         sudo rm -rf accesscontrol-plus
         sleep 3
-        
+      
     - name: 下载横幅 (Download banner)
       run: |
         cd openwrt/package/base-files/files/etc/
