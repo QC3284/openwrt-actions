@@ -105,10 +105,11 @@ jobs:
     - name: 更新Feed (Update Feed)
       run: |
         cd openwrt
+        rm -rf target/linux/ramips/patches-5.4/102-mt7621-fix-cpu-clk-add-clkdev.patch
+        wget https://raw.githubusercontent.com/coolsnowwolf/lede/5be81314bb08934fbe03c2e26191b80f021b0d2b/target/linux/ramips/patches-5.4/102-mt7621-fix-cpu-clk-add-clkdev.patch -O target/linux/ramips/patches-5.4/102-mt7621-fix-cpu-clk-add-clkdev.patch
         curl https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/lede-github-actions-ip.sh | bash
         curl https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/lede-github-actions-feed-01.sh | bash
         ./scripts/feeds update -a
-        curl https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/lede-github-actions-feed-02.sh | bash
         
     - name: 安装Feed (Install Feed)
       run: |
@@ -119,7 +120,7 @@ jobs:
     - name: 下载配置 (Download Config (.config))
       run: |
          cd openwrt
-         wget https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/lede-github-actions-001.config -O .config
+         wget https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/lede-github-actions-20250524.config -O .config
          echo " 下载完成 (Download complete)"
 
     - name: 下载包 (Download package (dl library))
@@ -178,13 +179,13 @@ jobs:
       id: tag
       if: env.UPLOAD_RELEASE == 'true' && !cancelled()
       run: |
-        echo "release_tag=$(date +"%Y.%m.%d-%H%M")" >> $GITHUB_OUTPUT
+        echo "release_tag=$(date +"%Y.%m.%d-%H%M-LEDE")" >> $GITHUB_OUTPUT
         touch release.txt
         curl https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/lede-github-actions-rl.sh | bash
         echo "status=success" >> $GITHUB_OUTPUT
 
     - name: 上传固件以发布 (Upload firmware for release)
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v2
       if: steps.tag.outputs.status == 'success' && !cancelled()
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
