@@ -10,7 +10,7 @@
 #本仓库及文件只在Github发布
 #作者：QC3284@github.com(https://github.com/QC3284)
 #本仓库地址：https://github.com/QC3284/openwrt-actions
-#最后更新时间：2025.5.24
+#最后更新时间：2025.7.6
 
 name: 编译X-wrt (Compile X-wrt)
 
@@ -82,7 +82,7 @@ jobs:
         sudo -E apt full-upgrade -y
         pip install requests tqdm
         echo Done
-        sleep 10
+        sleep 3
 
     - name: 拉取源码 (Pulling the source code)
       working-directory: /workdir
@@ -94,16 +94,15 @@ jobs:
         git pull
         git fetch origin
         git fetch origin --tags
-        git checkout $(curl "https://raw.githubusercontent.com/QC3284/openwrt-actions-config/refs/heads/main/x-wrt-config-tag.txt")
+        git checkout $(cat ../config/x-wrt-config-tag.txt)
          
         
     - name: 拉取插件 (Pull plug-in)
       run: |
         cd openwrt
-        curl https://raw.githubusercontent.com/QC3284/openwrt-actions-config/refs/heads/main/x-wrt-git-001.sh | bash
         cd package
-        wget https://raw.githubusercontent.com/QC3284/openwrt-actions-config/refs/heads/main/gitcj.py
-        wget https://raw.githubusercontent.com/QC3284/openwrt-actions-config/refs/heads/main/giturl.txt
+        cp ../script/gitcj.py .
+        cp ../script/giturl.txt .
         python3 gitcj.py
         mv accesscontrol-plus/luci-app-accesscontrol-plus ./
         sleep 2
@@ -115,7 +114,7 @@ jobs:
         cd openwrt/package/base-files/files/etc/
         sudo rm -rf banner
         ls
-        wget https://raw.githubusercontent.com/QC3284/openwrt-actions-config/refs/heads/main/x-wrt-banner.txt -O banner
+        cp ../../../../../config/x-wrt-banner.txt banner
 
     - name: 更新Feed (Update Feed)
       run: |
@@ -130,29 +129,24 @@ jobs:
          cd openwrt
          ./scripts/feeds install -a
          df -hT $PWD
-
-    - name: 下载配置 (Download Config (.config))
-      run: |
-         cd openwrt
-         wget https://raw.githubusercontent.com/QC3284/openwrt-actions-config/refs/heads/main/x-wrt-actions-$(curl "https://raw.githubusercontent.com/QC3284/openwrt-actions-config/refs/heads/main/x-wrt-config-tag.txt").config -O .config
-         echo " 下载完成 (Download complete)"
-
+  
     - name: 下载包 (Download package (dl library))
       run: |
          sudo neofetch
          cd openwrt
-         curl https://raw.githubusercontent.com/QC3284/openwrt-actions-config/refs/heads/main/x-wrt-make-001.sh | bash
+         cp ../config/x-wrt-actions-$(cat "x-wrt-config-tag.txt").config .config
+         bash ../script/x-wrt-make-001.sh
     
     - name: 压缩已准备好的编译目录 (Compress the prepared compilation directory)
       run: |
           echo "Start"
-          7zz a -mx=9 -mmt=8 "x-wrt-compilation-directory-$(curl "https://raw.githubusercontent.com/QC3284/openwrt-actions-config/refs/heads/main/x-wrt-config-tag.txt").7z" openwrt
+          7zz a -mx=9 -mmt=8 "x-wrt-compilation-directory-$(cat config/x-wrt-config-tag.txt).7z" openwrt
           sleep 2
           echo "All Done"
 
     - name: 编译固件 (Compile Firmware)
       run: |
-         mv "x-wrt-compilation-directory-$(curl "https://raw.githubusercontent.com/QC3284/openwrt-actions-config/refs/heads/main/x-wrt-config-tag.txt").7z" openwrt/
+         mv "x-wrt-compilation-directory-$(cat config/x-wrt-config-tag.txt).7z" openwrt/
          cd openwrt
          sudo neofetch
          make -version
@@ -176,7 +170,7 @@ jobs:
          mv bin.7z bin/targets/ramips/mt7621/
          mv make_download.log bin/targets/ramips/mt7621/
          mv make.log bin/targets/ramips/mt7621/
-         mv "x-wrt-compilation-directory-$(curl "https://raw.githubusercontent.com/QC3284/openwrt-actions-config/refs/heads/main/x-wrt-config-tag.txt").7z" bin/targets/ramips/mt7621/
+         mv "x-wrt-compilation-directory-$(cat ../config/x-wrt-config-tag.txt).7z" bin/targets/ramips/mt7621/
          echo "完成 (Finished.)"
 #         cd bin/targets/ramips/mt7621/
 #         wget https://raw.githubusercontent.com/QC3284/openwrt-actions-config/refs/heads/main/downloadurl.txt
@@ -219,7 +213,7 @@ jobs:
       run: |
         echo "release_tag=$(date +"%Y.%m.%d-%H%M")" >> $GITHUB_OUTPUT
         touch release.txt
-        curl https://raw.githubusercontent.com/QC3284/openwrt-actions-config/refs/heads/main/x-wrt-actions-txt-001.sh | bash
+        bash script/x-wrt-actions-txt-001.sh
         echo "status=success" >> $GITHUB_OUTPUT
 
     - name: 上传固件以发布 (Upload firmware for release)
