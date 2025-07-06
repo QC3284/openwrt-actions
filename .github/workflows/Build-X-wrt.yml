@@ -101,8 +101,8 @@ jobs:
       run: |
         cd openwrt
         cd package
-        cp ../script/gitcj.py .
-        cp ../script/giturl.txt .
+        cp ../../script/gitcj.py .
+        cp ../../script/giturl.txt .
         python3 gitcj.py
         mv accesscontrol-plus/luci-app-accesscontrol-plus ./
         sleep 2
