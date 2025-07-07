@@ -10,7 +10,7 @@
 #本仓库及文件只在Github发布
 #作者：QC3284@github.com(https://github.com/QC3284)
 #本仓库地址：https://github.com/QC3284/openwrt-actions
-#最后更新时间：2025.7.6
+#最后更新时间：2025.7.7
 
 name: 编译X-wrt (Compile X-wrt)
 
@@ -26,9 +26,6 @@ on:
         default: 'false'
 
 env:
-  UPLOAD_BIN_DIR: true
-  UPLOAD_FIRMWARE: true
-  UPLOAD_RELEASE: true
   TZ: Asia/Shanghai
 
 jobs:
@@ -192,7 +189,6 @@ jobs:
 
     - name: 整理文件 (Sort out documents)
       id: organize
-      if: env.UPLOAD_FIRMWARE == 'true' && !cancelled()
       run: |
         cd openwrt/bin/targets/*/*
         rm -rf packages
@@ -201,7 +197,6 @@ jobs:
 
     - name: 上传固件目录 (Uploading Firmware Directory)
       uses: actions/upload-artifact@v4
-      if: steps.organize.outputs.status == 'success' && !cancelled()
       with:
         name: OpenWrt_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
         path: ${{ env.FIRMWARE }}
@@ -209,16 +204,14 @@ jobs:
 
     - name: 生成发布标签 (Generate publish tags)
       id: tag
-      if: env.UPLOAD_RELEASE == 'true' && !cancelled()
       run: |
-        echo "release_tag=$(date +"%Y.%m.%d-%H%M")" >> $GITHUB_OUTPUT
+        echo "release_tag=$(date +"%Y.%m.%d-%H%M")-X-wrt" >> $GITHUB_OUTPUT
         touch release.txt
         bash script/x-wrt-actions-txt-001.sh
         echo "status=success" >> $GITHUB_OUTPUT
 
     - name: 上传固件以发布 (Upload firmware for release)
       uses: softprops/action-gh-release@v2
-      if: steps.tag.outputs.status == 'success' && !cancelled()
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
@@ -228,7 +221,6 @@ jobs:
 
     - name: 删除旧版本和删除工作流运行 (Delete old version and Delete workflow run)
       uses: ophub/delete-releases-workflows@main
-      if: env.UPLOAD_RELEASE == 'true' && !cancelled()
       with:
         delete_releases: true
         releases_keep_latest: 25

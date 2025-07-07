@@ -10,7 +10,7 @@
 #本仓库及文件只在Github发布
 #作者：QC3284@github.com(https://github.com/QC3284)
 #本仓库地址：https://github.com/QC3284/openwrt-actions
-#最后更新时间：2025.5.2
+#最后更新时间：2025.7.7
 
 name: 编译immortalwrt (Compile immortalwrt)
 
@@ -26,13 +26,6 @@ on:
         default: 'false'
 
 env:
-  FEEDS_CONF: feeds.conf.default
-  CONFIG_FILE: .config
-  UPLOAD_BIN_DIR: true
-  UPLOAD_FIRMWARE: true
-  UPLOAD_COWTRANSFER: true
-  UPLOAD_WETRANSFER: true
-  UPLOAD_RELEASE: true
   TZ: Asia/Shanghai
 
 jobs:
@@ -97,44 +90,23 @@ jobs:
       working-directory: /workdir
       run: |
         df -hT $PWD 
-        git clone https://github.com/immortalwrt/immortalwrt.git openwrt
+        git clone $(cat $GITHUB_WORKSPACE/config/immortalwrt-url.txt) openwrt
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
         cd openwrt
         git pull
-        git checkout v23.05.4
-        
-#    - name: 拉取插件 (Pull plug-in)
-#      run: |
-#        cd openwrt
-#        curl -sSL https://raw.githubusercontent.com/chenmozhijin/turboacc/luci/add_turboacc.sh -o add_turboacc.sh && bash add_turboacc.sh --no-sfe
-#        sleep 3       
-        
+     
     - name: 下载横幅 (Download banner)
       run: |
        cd openwrt/package/base-files/files/etc/
        sudo rm -rf banner
        ls
-       wget https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/immortalwrt-actions-banner-001.txt -O banner
+       cp $GITHUB_WORKSPACE/config/immortalwrt-actions-banner-001.txt banner
 
-
-#    - name: 加载自定义 Feed源和更新Feed-01
-#      run: |
-#         cd openwrt
-#         sed -i 's/192.168.15.1/192.168.5.1/g' package/base-files/files/bin/config_generate
-#         sed -i '1i src-git kenzo https://github.com/kenzok8/openwrt-packages' feeds.conf.default
-#         sed -i '2i src-git small https://github.com/kenzok8/small' feeds.conf.default
-#         ./scripts/feeds update -a && sudo rm -rf feeds/luci/applications/luci-app-mosdns && sudo rm -rf feeds/kenzo/luci-app-smartdns && sudo rm -rf feeds/luci/applications/luci-app-smartdns
-#         sudo rm -rf feeds/packages/net/{alist,adguardhome,mosdns,xray*,v2ray*,v2ray*,sing*,smartdns}
-#         sudo rm -rf feeds/packages/utils/v2dat
-#         sudo rm -rf feeds/packages/lang/golang
-#         git clone https://github.com/kenzok8/golang feeds/packages/lang/golang
-#         git clone https://github.com/pymumu/openwrt-smartdns feeds/packages/net/smartdns
-#         git clone https://github.com/pymumu/luci-app-smartdns feeds/luci/applications/luci-app-smartdns
 
     - name: 更新Feed (Update Feed)
       run: |
         cd openwrt
-        curl https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/immortalwrt-ip.sh | bash
+        bash $GITHUB_WORKSPACE/script/immortalwrt-ip.sh
         ./scripts/feeds update -a
 #        curl https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/x-wrt-git-003.sh | bash
         
@@ -144,17 +116,12 @@ jobs:
          ./scripts/feeds install -a
          df -hT $PWD
 
-    - name: 下载配置 (Download Config (.config))
-      run: |
-         cd openwrt
-         wget https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/immortalwrt-actions-002.config -O .config
-         echo " 下载完成 (Download complete)"
-
     - name: 下载包 (Download package (dl library))
       run: |
          sudo neofetch
          cd openwrt
-         curl https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/x-wrt-make-001.sh | bash
+         cp $GITHUB_WORKSPACE/config/immortalwrt-actions-20250707.config .config
+         bash $GITHUB_WORKSPACE/script/x-wrt-make-001.sh
 
     - name: 编译固件 (Compile Firmware)
       run: |
@@ -192,7 +159,6 @@ jobs:
 
     - name: 整理文件 (Sort out documents)
       id: organize
-      if: env.UPLOAD_FIRMWARE == 'true' && !cancelled()
       run: |
         cd openwrt/bin/targets/*/*
         rm -rf packages
@@ -201,7 +167,6 @@ jobs:
 
     - name: 上传固件目录 (Uploading Firmware Directory)
       uses: actions/upload-artifact@main
-      if: steps.organize.outputs.status == 'success' && !cancelled()
       with:
         name: OpenWrt_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
         path: ${{ env.FIRMWARE }}
@@ -209,16 +174,14 @@ jobs:
 
     - name: 生成发布标签 (Generate publish tags)
       id: tag
-      if: env.UPLOAD_RELEASE == 'true' && !cancelled()
       run: |
-        echo "release_tag=$(date +"%Y.%m.%d-%H%M")" >> $GITHUB_OUTPUT
+        echo "release_tag=$(date +"%Y.%m.%d-%H%M")-immortalwrt" >> $GITHUB_OUTPUT
         touch release.txt
-        curl https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/immortalwrt-actions-txt.sh | bash
+        bash $GITHUB_WORKSPACE/script/immortalwrt-actions-txt.sh
         echo "status=success" >> $GITHUB_OUTPUT
 
     - name: 上传固件以发布 (Upload firmware for release)
       uses: softprops/action-gh-release@v2
-      if: steps.tag.outputs.status == 'success' && !cancelled()
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
@@ -228,7 +191,6 @@ jobs:
 
     - name: 删除旧版本和删除工作流运行 (Delete old version and Delete workflow run)
       uses: ophub/delete-releases-workflows@main
-      if: env.UPLOAD_RELEASE == 'true' && !cancelled()
       with:
         delete_releases: true
         releases_keep_latest: 25

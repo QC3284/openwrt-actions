@@ -1,0 +1,15 @@
+.___                               __         .__
+|   | _____   _____   ____________/  |______  |  |
+|   |/     \ /     \ /  _ \_  __ \   __\__  \ |  |
+|   |  Y Y  \  Y Y  (  <_> )  | \/|  |  / __ \|  |__
+|___|__|_|  /__|_|  /\____/|__|   |__| (____  /____/
+          \/      \/  BE FREE AND UNAFRAID  \/
+ -----------------------------------------------------
+ %D %V, %C
+ -----------------------------------------------------
+ Compile source code:
+ https://github.com/padavanonly/immortalwrt
+ Github Actions Automatic compilation
+ Compilation Environment (System): Ubuntu 22.04 LTS
+ Firmware download or update address:
+ https://github.com/QC3284/openwrt-actions/releases
