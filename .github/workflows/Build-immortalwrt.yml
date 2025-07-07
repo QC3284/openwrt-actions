@@ -94,7 +94,6 @@ jobs:
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
         cd openwrt
         git pull
-        git checkout mt7915_mtwifi
      
     - name: 下载横幅 (Download banner)
       run: |

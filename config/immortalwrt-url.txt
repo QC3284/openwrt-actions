@@ -1,1 +1,1 @@
-https://github.com/padavanonly/immortalwrt.git
+-b mt7915_mtwifi --single-branch https://github.com/padavanonly/immortalwrt.git
