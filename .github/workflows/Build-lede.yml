@@ -10,7 +10,7 @@
 #本仓库及文件只在Github发布
 #作者：QC3284@github.com(https://github.com/QC3284)
 #本仓库地址：https://github.com/QC3284/openwrt-actions
-#最后更新时间：2025.5.2
+#最后更新时间：2025.7.9
 
 name: 编译lede (Compile lede)
 
@@ -26,13 +26,6 @@ on:
         default: 'false'
 
 env:
-  FEEDS_CONF: feeds.conf.default
-  CONFIG_FILE: .config
-  UPLOAD_BIN_DIR: true
-  UPLOAD_FIRMWARE: true
-  UPLOAD_COWTRANSFER: true
-  UPLOAD_WETRANSFER: true
-  UPLOAD_RELEASE: true
   TZ: Asia/Shanghai
 
 jobs:
@@ -86,29 +79,12 @@ jobs:
         cd openwrt/package/base-files/files/etc/
         sudo rm -rf banner
         ls
-        wget https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/lede-github-actions-banner.txt -O banner
-
-#    - name: 加载自定义 Feed源和更新Feed-01
-#      run: |
-#         cd openwrt
-#         sed -i 's/192.168.15.1/192.168.5.1/g' package/base-files/files/bin/config_generate
-#         sed -i '1i src-git kenzo https://github.com/kenzok8/openwrt-packages' feeds.conf.default
-#         sed -i '2i src-git small https://github.com/kenzok8/small' feeds.conf.default
-#         ./scripts/feeds update -a && sudo rm -rf feeds/luci/applications/luci-app-mosdns && sudo rm -rf feeds/kenzo/luci-app-smartdns && sudo rm -rf feeds/luci/applications/luci-app-smartdns
-#         sudo rm -rf feeds/packages/net/{alist,adguardhome,mosdns,xray*,v2ray*,v2ray*,sing*,smartdns}
-#         sudo rm -rf feeds/packages/utils/v2dat
-#         sudo rm -rf feeds/packages/lang/golang
-#         git clone https://github.com/kenzok8/golang feeds/packages/lang/golang
-#         git clone https://github.com/pymumu/openwrt-smartdns feeds/packages/net/smartdns
-#         git clone https://github.com/pymumu/luci-app-smartdns feeds/luci/applications/luci-app-smartdns
+        cp $GITHUB_WORKSPACE/config/lede-github-actions-banner.txt banner
 
     - name: 更新Feed (Update Feed)
       run: |
         cd openwrt
-        rm -rf target/linux/ramips/patches-5.4/102-mt7621-fix-cpu-clk-add-clkdev.patch
-        wget https://raw.githubusercontent.com/coolsnowwolf/lede/5be81314bb08934fbe03c2e26191b80f021b0d2b/target/linux/ramips/patches-5.4/102-mt7621-fix-cpu-clk-add-clkdev.patch -O target/linux/ramips/patches-5.4/102-mt7621-fix-cpu-clk-add-clkdev.patch
-        curl https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/lede-github-actions-ip.sh | bash
-        curl https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/lede-github-actions-feed-01.sh | bash
+        bash $GITHUB_WORKSPACE/script/lede-github-actions-ip.sh
         ./scripts/feeds update -a
         
     - name: 安装Feed (Install Feed)
@@ -117,17 +93,12 @@ jobs:
          ./scripts/feeds install -a
          df -hT $PWD
 
-    - name: 下载配置 (Download Config (.config))
-      run: |
-         cd openwrt
-         wget https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/lede-github-actions-20250524.config -O .config
-         echo " 下载完成 (Download complete)"
-
     - name: 下载包 (Download package (dl library))
       run: |
          sudo neofetch
          cd openwrt
-         curl https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/lede-github-actions-make-01.sh | bash
+         make defconfig -j4
+         bash $GITHUB_WORKSPACE/script/x-wrt-make-01.sh
 
     - name: 编译固件 (Compile Firmware)
       run: |
@@ -161,7 +132,6 @@ jobs:
 
     - name: 整理文件 (Sort out documents)
       id: organize
-      if: env.UPLOAD_FIRMWARE == 'true' && !cancelled()
       run: |
         cd openwrt/bin/targets/*/*
         rm -rf packages
@@ -170,18 +140,16 @@ jobs:
 
     - name: 上传固件目录 (Uploading Firmware Directory)
       uses: actions/upload-artifact@main
-      if: steps.organize.outputs.status == 'success' && !cancelled()
       with:
         name: OpenWrt_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
         path: ${{ env.FIRMWARE }}
 
     - name: 生成发布标签 (Generate publish tags)
       id: tag
-      if: env.UPLOAD_RELEASE == 'true' && !cancelled()
       run: |
         echo "release_tag=$(date +"%Y.%m.%d-%H%M-LEDE")" >> $GITHUB_OUTPUT
         touch release.txt
-        curl https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/lede-github-actions-rl.sh | bash
+        bash $GITHUB_WORKSPACE/script/lede-github-actions-rl.sh
         echo "status=success" >> $GITHUB_OUTPUT
 
     - name: 上传固件以发布 (Upload firmware for release)
@@ -196,7 +164,6 @@ jobs:
      
     - name: 删除旧版本和删除工作流运行 (Delete old version and Delete workflow run)
       uses: ophub/delete-releases-workflows@main
-      if: env.UPLOAD_RELEASE == 'true' && !cancelled()
       with:
         delete_releases: true
         releases_keep_latest: 25
