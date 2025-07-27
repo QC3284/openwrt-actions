@@ -10,7 +10,7 @@
 #本仓库及文件只在Github发布
 #作者：QC3284@github.com(https://github.com/QC3284)
 #本仓库地址：https://github.com/QC3284/openwrt-actions
-#最后更新时间：2025.7.9
+#最后更新时间：2025.7.28
 
 name: 编译lede (Compile lede)
 
@@ -95,7 +95,7 @@ jobs:
       run: |
          sudo neofetch
          cd openwrt
-         cp $GITHUB_WORKSPACE/config/lede-actions-20250723.config .config
+         cp $GITHUB_WORKSPACE/config/lede-actions-20250728.config .config
          bash $GITHUB_WORKSPACE/script/x-wrt-make-001.sh
 
     - name: 编译固件 (Compile Firmware)
