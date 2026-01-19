@@ -72,7 +72,7 @@ jobs:
         cd openwrt
         git pull
         
-    - name: 下载横幅 (Download banner)
+    - name: 复制横幅 ( banner)
       run: |
         cd openwrt/package/base-files/files/etc/
         sudo rm -rf banner
@@ -82,8 +82,14 @@ jobs:
     - name: 更新Feed (Update Feed)
       run: |
         cd openwrt
-        bash $GITHUB_WORKSPACE/script/lede-github-actions-ip.sh
+        sed -i '1i src-git kenzo https://github.com/kenzok8/openwrt-packages' feeds.conf.default
+        sed -i '2i src-git small https://github.com/kenzok8/small' feeds.conf.default
         ./scripts/feeds update -a
+        rm -rf feeds/luci/applications/luci-app-mosdns
+        rm -rf feeds/packages/net/{alist,adguardhome,mosdns,xray*,v2ray*,v2ray*,sing*,smartdns}
+        rm -rf feeds/packages/utils/v2dat
+        rm -rf feeds/packages/lang/golang
+        git clone https://github.com/kenzok8/golang feeds/packages/lang/golang
         
     - name: 安装Feed (Install Feed)
       run: |
@@ -93,18 +99,13 @@ jobs:
 
     - name: 下载包 (Download package (dl library))
       run: |
-         sudo neofetch
          cd openwrt
-         cp $GITHUB_WORKSPACE/config/lede-actions-20250728.config .config
-         bash $GITHUB_WORKSPACE/script/x-wrt-make-001.sh
+         cp $GITHUB_WORKSPACE/config/lede-actions-xiaomi_cr660x_mt7621-20260120.config .config
+         /usr/bin/bash $GITHUB_WORKSPACE/script/x-wrt-make-001.sh
 
     - name: 编译固件 (Compile Firmware)
       run: |
          cd openwrt
-         sudo neofetch
-         make -version
-         gcc --version | head -n1
-         sleep 10
          echo "开始编译"
          echo -e "$(nproc) thread compile"
          make -j$(nproc)  || make -j4 V=s || make -j4 V=99

@@ -9,6 +9,6 @@
    \  DE    \  /    %D %V, %C
     \________\/    -----------------------------------------------
                    LEDE https://github.com/coolsnowwolf/lede
-	              Compiled in Ubuntu 22.04 LTS (Github Actions)
+	               Compiled in Ubuntu 22.04 LTS (Github Actions)
                    Compiled by Lean's source code
-		         Github Actions Automatic compilation
+		           Github Actions Automatic compilation
