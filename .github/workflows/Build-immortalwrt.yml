@@ -2,7 +2,7 @@
 # https://github.com/QC3284/openwrt-actions
 # File name: Build-immortalwrt.yml
 #
-# Copyright (c) 2024-2025 QC3284 <https://www.xcqcoo.top>
+# Copyright (c) 2024-2026 QC3284 <https://www.xcqcoo.top>
 #
 # This is free software, licensed under the GNU GPLv3 License.
 # See /LICENSE for more information.
@@ -10,7 +10,7 @@
 #本仓库及文件只在Github发布
 #作者：QC3284@github.com(https://github.com/QC3284)
 #本仓库地址：https://github.com/QC3284/openwrt-actions
-#最后更新时间：2025.7.7
+#最后更新时间：2026.2.22
 
 name: 编译immortalwrt (Compile immortalwrt)
 
@@ -42,7 +42,7 @@ jobs:
         # this might remove tools that are actually needed,
         # if set to "true" but frees about 6 GB
         tool-cache: false
-        
+
         # all of these default to true, but feel free to set to
         # "false" if necessary for your workflow
         android: true
@@ -70,11 +70,11 @@ jobs:
         sudo mkdir -p /workdir
         sudo chown $USER:$GROUPS /workdir
         echo Done
-        
+
     - name: 安装必要软件包 (Installation of necessary packages)
       run: |
         echo Start
-        echo $(uname -a) 
+        echo $(uname -a)
         sleep 5
         sudo -E apt update
         sudo -E apt upgrade -y
@@ -89,24 +89,28 @@ jobs:
     - name: 拉取源码 (Pulling the source code)
       working-directory: /workdir
       run: |
-        df -hT $PWD 
+        df -hT $PWD
         git clone $(cat $GITHUB_WORKSPACE/config/immortalwrt-url.txt) openwrt
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
         cd openwrt
         git pull
-     
-    - name: 下载横幅 (Download banner)
-      run: |
-       cd openwrt/package/base-files/files/etc/
-       sudo rm -rf banner
-       ls
-       cp $GITHUB_WORKSPACE/config/immortalwrt-actions-banner-001.txt banner
+
+#    - name: 下载横幅 (Download banner)
+#      run: |
+#       cd openwrt/package/base-files/files/etc/
+#       sudo rm -rf banner
+#       ls
+#       cp $GITHUB_WORKSPACE/config/immortalwrt-actions-banner-001.txt banner
 
 
     - name: 更新Feed (Update Feed)
       run: |
         cd openwrt
         bash $GITHUB_WORKSPACE/script/immortalwrt-ip.sh
+        echo >> feeds.conf.default
+        echo 'src-git nas https://github.com/linkease/nas-packages.git;master' >> feeds.conf.default
+        echo 'src-git nas_luci https://github.com/linkease/nas-packages-luci.git;main' >> feeds.conf.default
+        echo 'src-git istore https://github.com/linkease/istore;main' >> feeds.conf.default
         ./scripts/feeds update -a
 #        curl https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/x-wrt-git-003.sh | bash
         
@@ -120,13 +124,12 @@ jobs:
       run: |
          sudo neofetch
          cd openwrt
-         cp $GITHUB_WORKSPACE/config/immortalwrt-actions-20250707.config .config
+         cp $GITHUB_WORKSPACE/config/immortalwrt-actions-mt7981-20260222.config .config
          bash $GITHUB_WORKSPACE/script/x-wrt-make-001.sh
 
     - name: 编译固件 (Compile Firmware)
       run: |
          cd openwrt
-         sudo neofetch
          make -version
          gcc --version | head -n1
          sleep 10
@@ -140,9 +143,9 @@ jobs:
          echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
          echo "压缩bin目录...... (Compressing bin directories ......)"
          7zz a -mx=9 -mmt=8 bin.7z bin
-         mv bin.7z bin/targets/ramips/mt7621/
-         mv make_download.log bin/targets/ramips/mt7621/
-         mv make.log bin/targets/ramips/mt7621/
+         mv bin.7z bin/targets/mediatek/filogic/
+         mv make_download.log bin/targets/mediatek/filogic/
+         mv make.log bin/targets/mediatek/filogic/
          sleep 3
          echo "完成 (Finished.)"
 
