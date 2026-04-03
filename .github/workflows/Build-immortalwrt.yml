@@ -65,7 +65,6 @@ jobs:
     - name: 更新Feed (Update Feed)
       working-directory: /workdir/openwrt
       run: |
-        bash $GITHUB_WORKSPACE/script/immortalwrt-ip.sh
         ./scripts/feeds update -a
 
     - name: 安装Feed (Install Feed)
