@@ -145,20 +145,6 @@ jobs:
         echo "Available disk space after installing packages:"
         df -h
 
-    - name: 获取源码缓存密钥 (Get Source Code Cache Key)
-      id: cache-key
-      run: |
-        URL_HASH=$(cat ${{ env.SOURCE_CODE_URL_FILE }} | md5sum | cut -d' ' -f1)
-        echo "url_hash=$URL_HASH" >> $GITHUB_OUTPUT
-        echo "Cache key will be based on source URL hash: $URL_HASH"
-
-    - name: 恢复源码缓存 (Restore Source Code Cache)
-      uses: actions/cache@main
-      with:
-        path: ${{ env.OPENWRT_DIR }}
-        key: openwrt-source-${{ steps.cache-key.outputs.url_hash }}
-      id: cache-openwrt
-
     - name: 拉取源码 (Pull Source Code)
       if: steps.cache-openwrt.outputs.cache-hit != 'true'
       working-directory: /workdir
@@ -178,13 +164,6 @@ jobs:
         git fetch --all
         git reset --hard origin/HEAD
         echo "Source code updated to latest version"
-
-    - name: 恢复包缓存 (Restore Package Cache)
-      uses: actions/cache@main
-      with:
-        path: ${{ env.OPENWRT_DIR }}/dl
-        key: openwrt-dl-${{ steps.cache-key.outputs.url_hash }}
-      id: cache-packages
 
     - name: 更新Feed (Update Feeds)
       working-directory: ${{ env.OPENWRT_DIR }}
