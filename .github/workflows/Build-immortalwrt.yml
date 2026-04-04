@@ -314,7 +314,7 @@ jobs:
 
     - name: 发布固件 (Release Firmware)
       uses: softprops/action-gh-release@master
-      if: github.event_name == 'schedule' || github.event.inputs.publish_release == 'true'
+      if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
