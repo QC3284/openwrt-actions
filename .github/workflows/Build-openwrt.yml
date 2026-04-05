@@ -1,57 +1,49 @@
-
 # https://github.com/QC3284/openwrt-actions
-# File name: Build-openwrt.yml
+# File name: Build-immortalwrt.yml (Optimized Version)
 #
-# Copyright (c) 2024-2025 QC3284 <https://www.xcqcoo.top>
+# Copyright (c) 2026 QC3284 <https://www.xcqcoo.top>
 #
 # This is free software, licensed under the GNU GPLv3 License.
 # See /LICENSE for more information.
-#
-#本仓库及文件只在Github发布
-#作者：QC3284@github.com(https://github.com/QC3284)
-#本仓库地址：https://github.com/QC3284/openwrt-actions
-#最后更新时间：2025.5.2
 
-name: 编译openwrt (Compile openwrt)
+name: 编译openwrt (Compile openwrtwrt)
 
 on:
   schedule:
     - cron: 0 3 * * 3,6
   repository_dispatch:
   workflow_dispatch:
-    inputs:
-      ssh:
-        description: "Dont care, and don't touch it!"
-        required: true
-        default: 'false'
 
 env:
-  FEEDS_CONF: feeds.conf.default
-  CONFIG_FILE: .config
-  UPLOAD_BIN_DIR: true
-  UPLOAD_FIRMWARE: true
-  UPLOAD_COWTRANSFER: true
-  UPLOAD_WETRANSFER: true
-  UPLOAD_RELEASE: true
   TZ: Asia/Shanghai
+  OPENWRT_DIR: /workdir/openwrt
+  SOURCE_CODE_URL_FILE: ${{ github.workspace }}/config/openwrt-url.txt
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
 
     steps:
-    - name: Checkout
+    - name: 检查仓库 (Checkout Repository)
       uses: actions/checkout@main
+      with:
+        fetch-depth: 1
 
-    - name: Free Disk Space (Ubuntu)
+    - name: 设置系统时区 (Set System Timezone)
+      run: |
+        sudo timedatectl set-timezone "$TZ"
+        date
+
+    - name: 创建工作目录 (Create Work Directory)
+      run: |
+        sudo mkdir -p /workdir
+        sudo chown $USER:$GROUPS /workdir
+        echo "Work directory created at /workdir"
+
+    - name: 释放磁盘空间 (Free Disk Space)
       uses: jlumbroso/free-disk-space@main
       with:
-        # this might remove tools that are actually needed,
-        # if set to "true" but frees about 6 GB
         tool-cache: false
-        
-        # all of these default to true, but feel free to set to
-        # "false" if necessary for your workflow
         android: true
         dotnet: true
         haskell: true
@@ -59,172 +51,275 @@ jobs:
         docker-images: true
         swap-storage: true
 
-    - name: Initialization environment
-      env:
-        DEBIAN_FRONTEND: noninteractive
+    - name: 检查可用磁盘空间 (Check Available Disk Space)
       run: |
-        echo Start
-        sleep 3
-        sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc /etc/mysql /etc/php
-        sudo -E apt-get -y purge azure-cli* docker* ghc* zulu* hhvm* llvm* firefox* google* dotnet* aspnetcore* powershell* openjdk* adoptopenjdk* mysql* php* mongodb* moby* snap* || true
-        sudo -E apt-get -qq update
-        sudo -E apt-get -qq install libfuse-dev $(curl -fsSL git.io/depends-ubuntu-2204)
-        sudo -E apt-get -qq autoremove --purge
-        sudo -E apt-get -qq clean
-        sudo timedatectl set-timezone "$TZ"
-        sudo mkdir -p /workdir
-        sudo chown $USER:$GROUPS /workdir
-        echo Done
-        
-    - name: 安装必要软件包 (Installation of necessary packages)
-      run: |
-        echo Start
-        echo $(uname -a) 
-        sleep 5
-        sudo apt-get update
-        sudo apt update
-        sudo apt upgrade -y
-        sudo apt update
-        sudo apt install build-essential ecj fastjar file flex g++ gcc-multilib g++-multilib gawk gettext git git-core java-propose-classpath libelf-dev libncurses5-dev libncursesw5-dev libssl-dev swig python3 python3-pip python3-dev python3-distutils python3-pyelftools subversion unzip wget zlib1g-dev rsync qemu-utils zip -y
-        sudo apt -y install lib32gcc-s1 
-        sudo apt update -y
-        sudo apt full-upgrade -y
-        sudo apt install -y ack antlr3 asciidoc autoconf automake autopoint binutils bison build-essential bzip2 ccache cmake cpio curl device-tree-compiler fastjar flex gawk gettext gcc-multilib g++-multilib git gperf haveged help2man intltool libc6-dev-i386 libelf-dev libfuse-dev libglib2.0-dev libgmp3-dev libltdl-dev libmpc-dev libmpfr-dev libncurses5-dev libncursesw5-dev libpython3-dev libreadline-dev libssl-dev libtool lrzsz mkisofs msmtp ninja-build p7zip p7zip-full patch pkgconf python3-full qemu-utils rsync scons squashfs-tools subversion swig texinfo uglifyjs upx-ucl unzip vim wget xmlto xxd zlib1g-dev
-        sudo apt-get install -y libfuse-dev neofetch 7zip gcc-aarch64-linux-gnu
-        sudo apt update
-        sudo apt full-upgrade -y
-        echo Done
-        sleep 10
+        echo "Available disk space before installing packages:"
+        df -h
 
-    - name: 拉取源码 (Pulling the source code)
+    - name: 安装必要软件包 (Install Necessary Packages)
+      run: |
+        echo "Installing necessary packages..."
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential \
+          ecj \
+          fastjar \
+          file \
+          flex \
+          g++ \
+          gcc-multilib \
+          g++-multilib \
+          gawk \
+          gettext \
+          git \
+          git-core \
+          java-propose-classpath \
+          libelf-dev \
+          libncurses5-dev \
+          libncursesw5-dev \
+          libssl-dev \
+          swig \
+          python3 \
+          python3-pip \
+          python3-dev \
+          python3-setuptools \
+          python3-pyelftools \
+          subversion \
+          unzip \
+          wget \
+          zlib1g-dev \
+          rsync \
+          qemu-utils \
+          zip \
+          libfuse-dev \
+          neofetch \
+          p7zip-full \
+          curl \
+          device-tree-compiler \
+          gperf \
+          haveged \
+          help2man \
+          intltool \
+          lib32gcc-s1 \
+          libc6-dev-i386 \
+          libglib2.0-dev \
+          libgmp3-dev \
+          libltdl-dev \
+          libmpc-dev \
+          libmpfr-dev \
+          libncurses-dev \
+          libpython3-dev \
+          libreadline-dev \
+          libtool \
+          libyaml-dev \
+          libz-dev \
+          lld \
+          llvm \
+          lrzsz \
+          mkisofs \
+          msmtp \
+          nano \
+          ninja-build \
+          p7zip \
+          patch \
+          pkgconf \
+          python3-ply \
+          python3-docutils \
+          re2c \
+          rsync \
+          scons \
+          squashfs-tools \
+          texinfo \
+          uglifyjs \
+          upx-ucl \
+          vim \
+          xmlto \
+          xxd \
+          zstd
+        pip install requests tqdm
+        echo "Packages installed successfully"
+
+    - name: 检查可用磁盘空间 (Check Available Disk Space After Package Installation)
+      run: |
+        echo "Available disk space after installing packages:"
+        df -h
+
+    - name: 拉取源码 (Pull Source Code)
+      if: steps.cache-openwrt.outputs.cache-hit != 'true'
       working-directory: /workdir
       run: |
-        df -hT $PWD 
-        git clone -b openwrt-24.10 https://git.openwrt.org/openwrt/openwrt.git openwrt
-        ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
-        cd openwrt
-        git pull
-        
-    - name: 拉取插件 (Pull plug-in)
-      run: |
-        cd openwrt/package
-        git clone https://github.com/QC3284/luci-app-ramfree.git
-        wget https://raw.githubusercontent.com/QC3284/openwrt-actions-config/refs/heads/main/gitcj.py
-        wget https://raw.githubusercontent.com/QC3284/openwrt-actions-config/refs/heads/main/giturl.txt
-        python3 gitcj.py
-        mv accesscontrol-plus/luci-app-accesscontrol-plus ./
-        sleep 2
-        sudo rm -rf accesscontrol-plus
-        sleep 3
+        echo "Cloning source code from: $(cat ${{ env.SOURCE_CODE_URL_FILE }})"
+        git clone $(cat ${{ env.SOURCE_CODE_URL_FILE }}) openwrt
+        echo "Source code cloned successfully"
 
-    - name: 下载横幅 (Download banner)
+    - name: 链接源码目录 (Link Source Code Directory)
       run: |
-        cd openwrt/package/base-files/files/etc/
-        sudo rm -rf banner
-        ls
-        wget https://raw.githubusercontent.com/QC3284/openwrt-actions-config/refs/heads/main/openwrt-actions-banner-001.txt -O banner
-        
-    - name: 更新Feed (Update Feed)
+        ln -sf ${{ env.OPENWRT_DIR }} ${{ github.workspace }}/openwrt
+        echo "Linked source code to workspace"
+
+    - name: 更新源码 (Update Source Code)
+      working-directory: ${{ env.OPENWRT_DIR }}
       run: |
-        cd openwrt
-        curl https://raw.githubusercontent.com/QC3284/openwrt-actions-config/refs/heads/main/openwrt-ip.sh | bash
+        git fetch --all
+        git reset --hard origin/HEAD
+        echo "Source code updated to latest version"
+
+    - name: 更新Feed (Update Feeds)
+      working-directory: ${{ env.OPENWRT_DIR }}
+      run: |
         ./scripts/feeds update -a
-#        curl https://raw.githubusercontent.com/QC3284/openwrt-actions-config/refs/heads/main/openwrtci.sh | bash
-        
-    - name: 安装Feed (Install Feed)
-      run: |
-         cd openwrt
-         ./scripts/feeds install -a
-         df -hT $PWD
+        echo "Feeds updated successfully"
 
-    - name: 下载配置 (Download Config (.config))
+    - name: 安装Feed (Install Feeds)
+      working-directory: ${{ env.OPENWRT_DIR }}
       run: |
-         cd openwrt
-         cp -af ./feeds/mtk_openwrt_feed/24.10/files/* .
-         for file in $(find ./feeds/mtk_openwrt_feed/24.10/patches-base -name "*.patch" | sort); do patch -f -p1 -i ${file}; done
-         wget https://raw.githubusercontent.com/QC3284/openwrt-actions-config/refs/heads/main/openwrt-actions-24.10-MTK.config -O .config
-         echo " 下载完成 (Download complete)"
+        ./scripts/feeds install -a
+        echo "Feeds installed successfully"
 
-    - name: 下载包 (Download package (dl library))
+    - name: 准备配置并下载包 (Prepare Config and Download Packages)
+      working-directory: ${{ env.OPENWRT_DIR }}
       run: |
-         sudo neofetch
-         cd openwrt
-         curl https://raw.githubusercontent.com/QC3284/openwrt-actions-config/refs/heads/main/x-wrt-make-001.sh | bash
+        echo "System information:"
+        sudo neofetch || echo "neofetch not available"
+
+        echo "Copying configuration file..."
+        wget https://downloads.openwrt.org/snapshots/targets/mediatek/filogic/config.buildinfo -O  .config
+
+        echo "Starting package downloads..."
+        bash ${{ github.workspace }}/script/x-wrt-make-001.sh
+        echo "Configuration and package preparation completed"
 
     - name: 编译固件 (Compile Firmware)
+      working-directory: ${{ env.OPENWRT_DIR }}
       run: |
-         cd openwrt
-         sudo neofetch
-         make -version
-         gcc --version | head -n1
-         sleep 10
-         echo "开始编译"
-         echo -e "$(nproc) thread compile"
-         echo "编译已开始，日志文件 make.log"
-         make -j$(nproc) 2>&1 | tee make.log
-         echo "status=success" >> $GITHUB_STATE
-         grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
-         [ -s DEVICE_NAME ] && echo "DEVICE_NAME=_$(cat DEVICE_NAME)" >> $GITHUB_ENV
-         echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
-         echo "压缩bin目录...... (Compressing bin directories ......)"
-         7zz a -mx=9 -mmt=8 bin.7z bin
-         mv bin.7z bin/targets/ramips/mt7621/
-         mv make_download.log bin/targets/ramips/mt7621/
-         mv make.log bin/targets/ramips/mt7621/
-         echo "完成 (Finished.)"
-    - name: 检查空间使用情况 (Check space usage)
-      if: (!cancelled())
-      run: df -hT
+        echo "开始编译 (Starting compilation)"
+        echo -e "$(nproc) thread compile"
+        echo "编译已开始，日志文件 make.log (Compilation started, log in make.log)"
 
-    - name:  上传bin目录 (Upload bin directory)
-      uses: actions/upload-artifact@v4
+        # 检查配置
+        if [ ! -f ".config" ]; then
+          echo "错误：配置文件不存在 (Error: Config file does not exist)"
+          exit 1
+        fi
+
+        # 开始编译
+        make -j$(nproc) V=s 2>&1 | tee make.log
+
+        # 检查编译结果
+        if [ ${PIPESTATUS[0]} -ne 0 ]; then
+          echo "编译失败 (Compilation failed)"
+          tail -50 make.log
+          exit 1
+        fi
+
+        echo "编译成功完成 (Compilation completed successfully)"
+
+        # 提取设备名称
+        grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
+        if [ -s DEVICE_NAME ]; then
+          echo "DEVICE_NAME=_$(cat DEVICE_NAME)" >> $GITHUB_ENV
+          echo "Detected device: $(cat DEVICE_NAME)"
+        else
+          echo "DEVICE_NAME=_unknown or _all" >> $GITHUB_ENV
+          echo "Could not detect device name"
+        fi
+
+        echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
+        echo "Build date: $(date)"
+
+    - name: 压缩固件文件 (Compress Firmware Files)
+      working-directory: ${{ env.OPENWRT_DIR }}
+      run: |
+        echo "压缩bin目录...... (Compressing bin directories ......)"
+
+        # 检查bin目录是否存在
+        if [ ! -d "bin" ]; then
+          echo "错误：bin目录不存在 (Error: bin directory does not exist)"
+          exit 1
+        fi
+
+        # 创建压缩文件
+        7z a -mx=9 -mmt=$(nproc) bin.7z bin/
+        echo "Bin directory compressed to bin.7z"
+
+        # 移动到目标位置
+        TARGET_DIR="bin/targets/mediatek/filogic"
+        if [ -d "$TARGET_DIR" ]; then
+          mv bin.7z "$TARGET_DIR/"
+          mv make.log "$TARGET_DIR/"
+          echo "Files moved to $TARGET_DIR"
+        else
+          echo "警告：目标目录不存在 $TARGET_DIR (Warning: Target directory does not exist: $TARGET_DIR)"
+        fi
+
+    - name: 检查最终空间使用情况 (Check Final Space Usage)
+      if: always()
+      run: |
+        echo "Final disk usage:"
+        df -hT
+        echo "OpenWRT directory size:"
+        du -sh ${{ env.OPENWRT_DIR }}
+
+    - name: 上传完整bin目录 (Upload Full Bin Directory)
+      uses: actions/upload-artifact@main
       with:
         name: OpenWrt_bin${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
-        path: openwrt/bin
+        path: ${{ env.OPENWRT_DIR }}/bin
+        retention-days: 30
+        compression-level: 9
 
-    - name: 整理文件 (Sort out documents)
+    - name: 整理固件文件 (Organize Firmware Files)
       id: organize
-      if: env.UPLOAD_FIRMWARE == 'true' && !cancelled()
       run: |
-        cd openwrt/bin/targets/*/*
-        rm -rf packages
-        echo "FIRMWARE=$PWD" >> $GITHUB_ENV
-        echo "status=success" >> $GITHUB_OUTPUT
+        FIRMWARE_DIR="${{ env.OPENWRT_DIR }}/bin/targets/mediatek/filogic"
 
-    - name: 上传固件目录 (Uploading Firmware Directory)
-      uses: actions/upload-artifact@v4
-      if: steps.organize.outputs.status == 'success' && !cancelled()
+        if [ -d "$FIRMWARE_DIR" ]; then
+          cd "$FIRMWARE_DIR"
+          echo "Removing packages directory..."
+          rm -rf packages
+
+          echo "FIRMWARE=$FIRMWARE_DIR" >> $GITHUB_ENV
+          echo "Found firmware in: $FIRMWARE_DIR"
+
+          # 列出找到的固件文件
+          ls -la *.bin *.img || echo "No firmware files found"
+        else
+          echo "错误：固件目录不存在 $FIRMWARE_DIR (Error: Firmware directory does not exist: $FIRMWARE_DIR)"
+          exit 1
+        fi
+
+    - name: 上传固件文件 (Upload Firmware Files)
+      uses: actions/upload-artifact@main
       with:
         name: OpenWrt_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
         path: ${{ env.FIRMWARE }}
+        retention-days: 30
+        compression-level: 9
 
-    - name: 生成发布标签 (Generate publish tags)
+    - name: 生成发布标签 (Generate Release Tags)
       id: tag
-      if: env.UPLOAD_RELEASE == 'true' && !cancelled()
       run: |
-        echo "release_tag=$(date +"%Y.%m.%d-%H%M")" >> $GITHUB_OUTPUT
-        touch release.txt
-        echo "自动编译" >> release.txt
-        echo "23.05" >> release.txt
-        echo "status=success" >> $GITHUB_OUTPUT
+        RELEASE_TAG=$(date +"%Y.%m.%d-%H%M")-immortalwrt
+        echo "release_tag=$RELEASE_TAG" >> $GITHUB_OUTPUT
+        echo "Generated release tag: $RELEASE_TAG"
 
-    - name: 上传固件以发布 (Upload firmware for release)
-      uses: softprops/action-gh-release@v2
-      if: steps.tag.outputs.status == 'success' && !cancelled()
+        touch release.txt
+        echo "ImmortalWRT Build - $RELEASE_TAG" > release.txt
+        echo "Built on: $(date)" >> release.txt
+        echo "Device: ${{ env.DEVICE_NAME }}" >> release.txt
+        echo "Target: mediatek/filogic" >> release.txt
+
+        bash ${{ github.workspace }}/script/immortalwrt-actions-txt.sh >> release.txt
+
+    - name: 发布固件 (Release Firmware)
+      uses: softprops/action-gh-release@master
+      if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         tag_name: ${{ steps.tag.outputs.release_tag }}
+        name: "ImmortalWRT Build ${{ steps.tag.outputs.release_tag }}"
         body_path: release.txt
         files: ${{ env.FIRMWARE }}/*
-
-    - name: 删除旧版本和删除工作流运行 (Delete old version and Delete workflow run)
-      uses: ophub/delete-releases-workflows@main
-      if: env.UPLOAD_RELEASE == 'true' && !cancelled()
-      with:
-        delete_releases: true
-        releases_keep_latest: 25
-        delete_workflows: true
-        workflows_keep_day: 30
-        gh_token: ${{ secrets.GITHUB_TOKEN }}
-  
+        draft: false
+        prerelease: false
