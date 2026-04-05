@@ -184,6 +184,7 @@ jobs:
 
         echo "Copying configuration file..."
         wget https://downloads.openwrt.org/snapshots/targets/mediatek/filogic/config.buildinfo -O  .config
+        make defconfig
 
         echo "Starting package downloads..."
         bash ${{ github.workspace }}/script/x-wrt-make-001.sh
