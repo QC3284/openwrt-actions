@@ -41,7 +41,7 @@ jobs:
             exit 1
           fi
 
-          # 读取要编译的设备名列表，存入数组（过滤空行和注释）
+          # 读取要编译的设备名列表，存入数组
           mapfile -t ENABLED_DEVICES < <(grep -v '^[[:space:]]*#' "$ENABLE_FILE" | grep -v '^[[:space:]]*$')
           if [ ${#ENABLED_DEVICES[@]} -eq 0 ]; then
             echo "::error::启用配置文件中未包含任何设备"
@@ -51,13 +51,16 @@ jobs:
 
           # 扫描配置文件目录，匹配格式：immortalwrt-actions-mt7981-*.config
           # 文件名格式：immortalwrt-actions-mt7981-{设备名}-{14位日期}.config
+          # 使用正则提取设备名和日期，并找出每个设备的最新文件
           declare -A LATEST_CONFIGS
           declare -A LATEST_DATETIME
           while IFS= read -r -d '' file; do
             filename=$(basename "$file")
+            # 提取设备名：去掉前缀和日期后缀，日期为14位数字
             if [[ "$filename" =~ ^immortalwrt-actions-mt7981-(.+)-([0-9]{14})\.config$ ]]; then
               device="${BASH_REMATCH[1]}"
               datetime="${BASH_REMATCH[2]}"
+              # 检查该设备是否在启用列表中
               if [[ " ${ENABLED_DEVICES[*]} " == *" $device "* ]]; then
                 if [[ -z "${LATEST_CONFIGS[$device]}" ]] || [[ "$datetime" > "${LATEST_DATETIME[$device]}" ]]; then
                   LATEST_CONFIGS["$device"]="$file"
@@ -98,6 +101,7 @@ jobs:
     needs: prepare
     if: needs.prepare.outputs.matrix != '[]'
     runs-on: ubuntu-24.04
+    timeout-minutes: 360  # 设置最大执行时间（GitHub 免费版上限）
     strategy:
       fail-fast: false
       matrix:
@@ -275,7 +279,8 @@ jobs:
       working-directory: ${{ env.OPENWRT_DIR }}
       run: |
         echo "开始编译设备: ${{ env.DEVICE_NAME }} (Starting compilation for device: ${{ env.DEVICE_NAME }})"
-        echo -e "$(nproc) thread compile"
+        THREAD_COUNT=$(($(nproc) + 1))
+        echo "使用 $THREAD_COUNT 线程编译 (Compiling with $THREAD_COUNT threads)"
         echo "编译已开始，日志文件 make.log (Compilation started, log in make.log)"
 
         # 检查配置
@@ -284,8 +289,8 @@ jobs:
           exit 1
         fi
 
-        # 开始编译
-        make -j$(nproc) V=s 2>&1 | tee make.log
+        # 开始编译，日志同时输出到终端和文件
+        make -j$THREAD_COUNT V=s 2>&1 | tee make.log
 
         # 检查编译结果
         if [ ${PIPESTATUS[0]} -ne 0 ]; then
@@ -339,8 +344,8 @@ jobs:
         rm -rf packages
 
         echo "固件文件列表 (Firmware files):"
-        ls -la *.bin *.img *.trx *.chk *.sys *.rom *.fit *.7z *.log 2>/dev/null || echo "No standard firmware files found"
-        find . -maxdepth 1 \( -name "*.bin" -o -name "*.img" -o -name "*.trx" -o -name "*.chk" -o -name "*.sys" -o -name "*.rom" -o -name "*.fit" -o -name "*factory*" -o -name "*sysupgrade*" -o -name "*.7z" -o -name "make.log" \) -type f
+        ls -la *.bin *.img *.trx *.chk *.sys *.rom *.fit *.itb *.7z *.log 2>/dev/null || echo "No standard firmware files found"
+        find . -maxdepth 1 \( -name "*.bin" -o -name "*.img" -o -name "*.trx" -o -name "*.chk" -o -name "*.sys" -o -name "*.rom" -o -name "*.fit" -o -name "*.itb" -o -name "*factory*" -o -name "*sysupgrade*" -o -name "*.7z" -o -name "make.log" \) -type f
 
     - name: 生成发布标签与描述 (Generate Release Tag and Description)
       id: tag

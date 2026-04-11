@@ -1,1 +1,2 @@
 glinet_gl-mt3000
+konka_komi-a31
