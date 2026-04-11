@@ -31,70 +31,68 @@ jobs:
           fetch-depth: 1
 
       - name: 生成编译矩阵 (Generate Build Matrix)
-      id: set-matrix
-      run: |
-        ENABLE_FILE="${{ github.workspace }}/immortalwrt-mt7981-enable-configs.txt"
-        CONFIG_DIR="${{ github.workspace }}/config/immortalwrt-mt7981"
+        id: set-matrix
+        run: |
+          ENABLE_FILE="${{ github.workspace }}/config/immortalwrt-mt7981-enable-configs.txt"
+          CONFIG_DIR="${{ github.workspace }}/config/immortalwrt-mt7981"
 
-        if [ ! -f "$ENABLE_FILE" ]; then
-          echo "::error::启用配置文件不存在: $ENABLE_FILE"
-          exit 1
-        fi
+          if [ ! -f "$ENABLE_FILE" ]; then
+            echo "::error::启用配置文件不存在: $ENABLE_FILE"
+            exit 1
+          fi
 
-        # 读取要编译的设备名列表，存入数组
-        mapfile -t ENABLED_DEVICES < <(grep -v '^[[:space:]]*#' "$ENABLE_FILE" | grep -v '^[[:space:]]*$')
-        if [ ${#ENABLED_DEVICES[@]} -eq 0 ]; then
-          echo "::error::启用配置文件中未包含任何设备"
-          exit 1
-        fi
-        echo "启用的设备: ${ENABLED_DEVICES[*]}"
+          # 读取要编译的设备名列表，存入数组（过滤空行和注释）
+          mapfile -t ENABLED_DEVICES < <(grep -v '^[[:space:]]*#' "$ENABLE_FILE" | grep -v '^[[:space:]]*$')
+          if [ ${#ENABLED_DEVICES[@]} -eq 0 ]; then
+            echo "::error::启用配置文件中未包含任何设备"
+            exit 1
+          fi
+          echo "启用的设备: ${ENABLED_DEVICES[*]}"
 
-        # 扫描配置文件目录，匹配格式：immortalwrt-actions-mt7981-*.config
-        # 文件名格式：immortalwrt-actions-mt7981-{设备名}-{14位日期}.config
-        # 使用正则提取设备名和日期，并找出每个设备的最新文件
-        declare -A LATEST_CONFIGS
-        while IFS= read -r -d '' file; do
-          filename=$(basename "$file")
-          # 提取设备名：去掉前缀和日期后缀，日期为14位数字
-          if [[ "$filename" =~ ^immortalwrt-actions-mt7981-(.+)-([0-9]{14})\.config$ ]]; then
-            device="${BASH_REMATCH[1]}"
-            datetime="${BASH_REMATCH[2]}"
-            # 检查该设备是否在启用列表中
-            if [[ " ${ENABLED_DEVICES[*]} " == *" $device "* ]]; then
-              if [[ -z "${LATEST_CONFIGS[$device]}" ]] || [[ "$datetime" > "${LATEST_DATETIME[$device]}" ]]; then
-                LATEST_CONFIGS["$device"]="$file"
-                LATEST_DATETIME["$device"]="$datetime"
+          # 扫描配置文件目录，匹配格式：immortalwrt-actions-mt7981-*.config
+          # 文件名格式：immortalwrt-actions-mt7981-{设备名}-{14位日期}.config
+          declare -A LATEST_CONFIGS
+          declare -A LATEST_DATETIME
+          while IFS= read -r -d '' file; do
+            filename=$(basename "$file")
+            if [[ "$filename" =~ ^immortalwrt-actions-mt7981-(.+)-([0-9]{14})\.config$ ]]; then
+              device="${BASH_REMATCH[1]}"
+              datetime="${BASH_REMATCH[2]}"
+              if [[ " ${ENABLED_DEVICES[*]} " == *" $device "* ]]; then
+                if [[ -z "${LATEST_CONFIGS[$device]}" ]] || [[ "$datetime" > "${LATEST_DATETIME[$device]}" ]]; then
+                  LATEST_CONFIGS["$device"]="$file"
+                  LATEST_DATETIME["$device"]="$datetime"
+                fi
               fi
             fi
-          fi
-        done < <(find "$CONFIG_DIR" -maxdepth 1 -type f -name "immortalwrt-actions-mt7981-*.config" -print0)
+          done < <(find "$CONFIG_DIR" -maxdepth 1 -type f -name "immortalwrt-actions-mt7981-*.config" -print0)
 
-        # 输出匹配结果
-        for dev in "${!LATEST_CONFIGS[@]}"; do
-          echo "设备 [$dev] 使用配置: ${LATEST_CONFIGS[$dev]} (日期: ${LATEST_DATETIME[$dev]})"
-        done
+          # 输出匹配结果
+          for dev in "${!LATEST_CONFIGS[@]}"; do
+            echo "设备 [$dev] 使用配置: ${LATEST_CONFIGS[$dev]} (日期: ${LATEST_DATETIME[$dev]})"
+          done
 
-        # 生成 JSON 矩阵
-        JSON_ARRAY="["
-        first=true
-        for dev in "${ENABLED_DEVICES[@]}"; do
-          if [ -n "${LATEST_CONFIGS[$dev]}" ]; then
-            if [ "$first" = true ]; then
-              first=false
+          # 生成 JSON 矩阵
+          JSON_ARRAY="["
+          first=true
+          for dev in "${ENABLED_DEVICES[@]}"; do
+            if [ -n "${LATEST_CONFIGS[$dev]}" ]; then
+              if [ "$first" = true ]; then
+                first=false
+              else
+                JSON_ARRAY+=","
+              fi
+              JSON_ARRAY+="{\"device\":\"$dev\",\"config\":\"${LATEST_CONFIGS[$dev]}\"}"
             else
-              JSON_ARRAY+=","
+              echo "::warning::设备 [$dev] 在启用列表中但未找到对应的配置文件，已跳过"
             fi
-            JSON_ARRAY+="{\"device\":\"$dev\",\"config\":\"${LATEST_CONFIGS[$dev]}\"}"
-          else
-            echo "::warning::设备 [$dev] 在启用列表中但未找到对应的配置文件，已跳过"
-          fi
-        done
-        JSON_ARRAY+="]"
+          done
+          JSON_ARRAY+="]"
 
-        echo "matrix=$JSON_ARRAY" >> $GITHUB_OUTPUT
-        echo "::group::生成的矩阵 JSON"
-        echo "$JSON_ARRAY" | jq .
-        echo "::endgroup::"
+          echo "matrix=$JSON_ARRAY" >> $GITHUB_OUTPUT
+          echo "::group::生成的矩阵 JSON"
+          echo "$JSON_ARRAY" | jq .
+          echo "::endgroup::"
 
   build:
     needs: prepare
