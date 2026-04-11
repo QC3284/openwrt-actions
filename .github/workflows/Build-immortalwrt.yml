@@ -182,8 +182,7 @@ jobs:
           echo "恢复编译状态..."
           tar -I 'zstd -d' -xf state/openwrt_state.tar.zst
           rm -rf state
-          echo "恢复完成，当前目录内容:"
-          ls -la openwrt/
+          echo "恢复完成"
 
       - name: 拉取源码 (Pull Source Code) [全新编译时执行]
         if: steps.check-resume.outputs.is_resume != 'true'
@@ -219,7 +218,7 @@ jobs:
       - name: 编译固件并监控超时 (Compile with Timeout Monitoring)
         id: compile
         working-directory: ${{ env.OPENWRT_DIR }}
-        timeout-minutes: 350   # 略低于6小时，留出打包上传时间
+        timeout-minutes: 350
         run: |
           THREAD_COUNT=$(($(nproc) + 1))
           echo "使用 $THREAD_COUNT 线程编译"
@@ -227,19 +226,31 @@ jobs:
           # 启动后台编译
           make -j$THREAD_COUNT V=s &> make.log &
           MAKE_PID=$!
+          echo "编译进程 PID: $MAKE_PID"
 
-          echo "编译进程 PID: $MAKE_PID，开始监控时间..."
+          # 使用 SECONDS 内置变量记录本步骤已运行秒数
+          SECONDS=0
+          TIMEOUT_SECONDS=$(( 330 * 60 ))   # 330 分钟，留出打包上传时间
+
           while kill -0 $MAKE_PID 2>/dev/null; do
-            sleep 60
-            # 计算当前 job 已运行时间（近似）
-            JOB_START_TIME=$(cat /proc/$PPID/stat 2>/dev/null | awk '{print $22}' || echo 0)
-            CURRENT_TIME=$(($(date +%s) - $JOB_START_TIME))
-            # 设定阈值 330 分钟（19800 秒）
-            if [ $CURRENT_TIME -gt 19800 ]; then
-              echo "::warning::接近任务时间上限，主动停止编译以保存进度。"
-              kill $MAKE_PID
+            sleep 10
+            if [ $SECONDS -gt $TIMEOUT_SECONDS ]; then
+              echo "::warning::编译已运行 ${SECONDS} 秒，接近任务时间上限，主动停止以保存进度。"
+              # 优雅终止
+              kill -TERM $MAKE_PID
+              # 等待最多 30 秒
+              for i in {1..30}; do
+                if ! kill -0 $MAKE_PID 2>/dev/null; then
+                  break
+                fi
+                sleep 1
+              done
+              # 若仍未退出，强制杀死
+              if kill -0 $MAKE_PID 2>/dev/null; then
+                echo "进程未响应 SIGTERM，发送 SIGKILL"
+                kill -KILL $MAKE_PID
+              fi
               wait $MAKE_PID 2>/dev/null || true
-              echo "编译已暂停，准备保存状态。"
               echo "compile_completed=false" >> $GITHUB_OUTPUT
               exit 0
             fi
@@ -249,8 +260,8 @@ jobs:
           MAKE_EXIT_CODE=$?
 
           if [ $MAKE_EXIT_CODE -ne 0 ]; then
-            echo "编译失败，请检查日志。"
-            tail -50 make.log
+            echo "编译失败，退出码: $MAKE_EXIT_CODE"
+            tail -100 make.log
             exit 1
           fi
 
@@ -315,6 +326,14 @@ jobs:
           echo "固件文件列表:"
           ls -la *.bin *.img *.trx *.chk *.sys *.rom *.fit *.itb *.7z *.log 2>/dev/null || true
 
+      - name: 上传固件 Artifact (Upload Firmware Artifact) [编译成功时]
+        if: steps.compile.outputs.compile_completed == 'true'
+        uses: actions/upload-artifact@main
+        with:
+          name: openwrt-firmware-${{ matrix.device }}
+          path: ${{ env.OPENWRT_DIR }}/${{ env.TARGET_DIR }}/
+          retention-days: 30
+
   trigger-resume:
     needs: compile
     if: always() && needs.compile.result == 'success' && needs.compile.outputs.needs_resume == 'true'
@@ -328,14 +347,13 @@ jobs:
           ARTIFACT="${{ needs.compile.outputs.state_artifact_name }}"
           echo "将为设备 $DEVICE 触发新的恢复运行，Artifact: $ARTIFACT"
 
-          # 使用 GitHub CLI 触发 workflow_dispatch
           gh workflow run "Build-immortalwrt.yml" \
             --repo "${{ github.repository }}" \
             --ref "${{ github.ref }}" \
             --field resume_device="$DEVICE" \
             --field state_artifact_name="$ARTIFACT"
 
-          echo "恢复任务已触发。当前工作流实例将正常结束。"
+          echo "恢复任务已触发。"
 
   release:
     needs: compile
