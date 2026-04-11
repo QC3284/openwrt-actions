@@ -1,5 +1,5 @@
 # https://github.com/QC3284/openwrt-actions
-# File name: Build-immortalwrt.yml (Multi-Config Parallel Build)
+# File name: Build-immortalwrt.yml (Resumable Parallel Build)
 #
 # Copyright (c) 2026 QC3284 <https://www.xcqcoo.top>
 #
@@ -10,9 +10,18 @@ name: 编译immortalwrt (Compile immortalwrt)
 
 on:
   schedule:
-    - cron: 0 3 * * 3,6
+    - cron: '0 3 * * 3,6'
   repository_dispatch:
   workflow_dispatch:
+    inputs:
+      resume_device:
+        description: '要恢复编译的设备名（留空表示全新编译）'
+        required: false
+        type: string
+      state_artifact_name:
+        description: '保存状态的 Artifact 名称（恢复时使用）'
+        required: false
+        type: string
 
 env:
   TZ: Asia/Shanghai
@@ -41,7 +50,6 @@ jobs:
             exit 1
           fi
 
-          # 读取要编译的设备名列表，存入数组
           mapfile -t ENABLED_DEVICES < <(grep -v '^[[:space:]]*#' "$ENABLE_FILE" | grep -v '^[[:space:]]*$')
           if [ ${#ENABLED_DEVICES[@]} -eq 0 ]; then
             echo "::error::启用配置文件中未包含任何设备"
@@ -49,18 +57,13 @@ jobs:
           fi
           echo "启用的设备: ${ENABLED_DEVICES[*]}"
 
-          # 扫描配置文件目录，匹配格式：immortalwrt-actions-mt7981-*.config
-          # 文件名格式：immortalwrt-actions-mt7981-{设备名}-{14位日期}.config
-          # 使用正则提取设备名和日期，并找出每个设备的最新文件
           declare -A LATEST_CONFIGS
           declare -A LATEST_DATETIME
           while IFS= read -r -d '' file; do
             filename=$(basename "$file")
-            # 提取设备名：去掉前缀和日期后缀，日期为14位数字
             if [[ "$filename" =~ ^immortalwrt-actions-mt7981-(.+)-([0-9]{14})\.config$ ]]; then
               device="${BASH_REMATCH[1]}"
               datetime="${BASH_REMATCH[2]}"
-              # 检查该设备是否在启用列表中
               if [[ " ${ENABLED_DEVICES[*]} " == *" $device "* ]]; then
                 if [[ -z "${LATEST_CONFIGS[$device]}" ]] || [[ "$datetime" > "${LATEST_DATETIME[$device]}" ]]; then
                   LATEST_CONFIGS["$device"]="$file"
@@ -70,12 +73,10 @@ jobs:
             fi
           done < <(find "$CONFIG_DIR" -maxdepth 1 -type f -name "immortalwrt-actions-mt7981-*.config" -print0)
 
-          # 输出匹配结果
           for dev in "${!LATEST_CONFIGS[@]}"; do
             echo "设备 [$dev] 使用配置: ${LATEST_CONFIGS[$dev]} (日期: ${LATEST_DATETIME[$dev]})"
           done
 
-          # 生成 JSON 矩阵
           JSON_ARRAY="["
           first=true
           for dev in "${ENABLED_DEVICES[@]}"; do
@@ -87,7 +88,7 @@ jobs:
               fi
               JSON_ARRAY+="{\"device\":\"$dev\",\"config\":\"${LATEST_CONFIGS[$dev]}\"}"
             else
-              echo "::warning::设备 [$dev] 在启用列表中但未找到对应的配置文件，已跳过"
+              echo "::warning::设备 [$dev] 未找到配置文件，已跳过"
             fi
           done
           JSON_ARRAY+="]"
@@ -97,11 +98,11 @@ jobs:
           echo "$JSON_ARRAY" | jq .
           echo "::endgroup::"
 
-  build:
+  compile:
     needs: prepare
     if: needs.prepare.outputs.matrix != '[]'
     runs-on: ubuntu-24.04
-    timeout-minutes: 360  # 设置最大执行时间（GitHub 免费版上限）
+    timeout-minutes: 360
     strategy:
       fail-fast: false
       matrix:
@@ -109,278 +110,282 @@ jobs:
     env:
       DEVICE_NAME: ${{ matrix.device }}
       CONFIG_FILE: ${{ matrix.config }}
-
+    outputs:
+      needs_resume: ${{ steps.set-output.outputs.needs_resume }}
+      resume_device: ${{ steps.set-output.outputs.resume_device }}
+      state_artifact_name: ${{ steps.set-output.outputs.state_artifact_name }}
+      compile_success: ${{ steps.set-output.outputs.compile_success }}
     steps:
-    - name: 检查仓库 (Checkout Repository)
-      uses: actions/checkout@main
-      with:
-        fetch-depth: 1
+      - name: 检查仓库 (Checkout Repository)
+        uses: actions/checkout@main
+        with:
+          fetch-depth: 1
 
-    - name: 设置系统时区 (Set System Timezone)
-      run: |
-        sudo timedatectl set-timezone "$TZ"
-        date
+      - name: 判断是否为恢复运行 (Check Resume Mode)
+        id: check-resume
+        run: |
+          if [ -n "${{ github.event.inputs.resume_device }}" ] && [ "${{ github.event.inputs.resume_device }}" == "${{ matrix.device }}" ]; then
+            echo "is_resume=true" >> $GITHUB_OUTPUT
+            echo "state_artifact_name=${{ github.event.inputs.state_artifact_name }}" >> $GITHUB_OUTPUT
+            echo "::notice::以恢复模式运行，设备: ${{ matrix.device }}"
+          else
+            echo "is_resume=false" >> $GITHUB_OUTPUT
+            echo "::notice::以全新模式运行，设备: ${{ matrix.device }}"
+          fi
 
-    - name: 创建工作目录 (Create Work Directory)
-      run: |
-        sudo mkdir -p /workdir
-        sudo chown $USER:$GROUPS /workdir
-        echo "Work directory created at /workdir"
+      - name: 设置系统时区 (Set System Timezone)
+        run: |
+          sudo timedatectl set-timezone "$TZ"
+          date
 
-    - name: 释放磁盘空间 (Free Disk Space)
-      uses: jlumbroso/free-disk-space@main
-      with:
-        tool-cache: false
-        android: true
-        dotnet: true
-        haskell: true
-        large-packages: true
-        docker-images: true
-        swap-storage: true
+      - name: 创建工作目录 (Create Work Directory)
+        run: |
+          sudo mkdir -p /workdir
+          sudo chown $USER:$GROUPS /workdir
 
-    - name: 检查可用磁盘空间 (Check Available Disk Space)
-      run: |
-        echo "Available disk space before installing packages:"
-        df -h
+      - name: 释放磁盘空间 (Free Disk Space)
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
 
-    - name: 安装必要软件包 (Install Necessary Packages)
-      run: |
-        echo "Installing necessary packages..."
-        sudo apt-get update
-        sudo apt-get install -y \
-          build-essential \
-          ecj \
-          fastjar \
-          file \
-          flex \
-          g++ \
-          gcc-multilib \
-          g++-multilib \
-          gawk \
-          gettext \
-          git \
-          git-core \
-          java-propose-classpath \
-          libelf-dev \
-          libncurses5-dev \
-          libncursesw5-dev \
-          libssl-dev \
-          swig \
-          python3 \
-          python3-pip \
-          python3-dev \
-          python3-setuptools \
-          python3-pyelftools \
-          subversion \
-          unzip \
-          wget \
-          zlib1g-dev \
-          rsync \
-          qemu-utils \
-          zip \
-          libfuse-dev \
-          neofetch \
-          p7zip-full \
-          curl \
-          device-tree-compiler \
-          gperf \
-          haveged \
-          help2man \
-          intltool \
-          lib32gcc-s1 \
-          libc6-dev-i386 \
-          libglib2.0-dev \
-          libgmp3-dev \
-          libltdl-dev \
-          libmpc-dev \
-          libmpfr-dev \
-          libncurses-dev \
-          libpython3-dev \
-          libreadline-dev \
-          libtool \
-          libyaml-dev \
-          libz-dev \
-          lld \
-          llvm \
-          lrzsz \
-          mkisofs \
-          msmtp \
-          nano \
-          ninja-build \
-          p7zip \
-          patch \
-          pkgconf \
-          python3-ply \
-          python3-docutils \
-          re2c \
-          rsync \
-          scons \
-          squashfs-tools \
-          texinfo \
-          uglifyjs \
-          upx-ucl \
-          vim \
-          xmlto \
-          xxd \
-          zstd
-        pip install requests tqdm
-        echo "Packages installed successfully"
+      - name: 安装必要软件包 (Install Necessary Packages)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential ecj fastjar file flex g++ gcc-multilib g++-multilib gawk gettext git git-core \
+            java-propose-classpath libelf-dev libncurses5-dev libncursesw5-dev libssl-dev swig python3 \
+            python3-pip python3-dev python3-setuptools python3-pyelftools subversion unzip wget zlib1g-dev \
+            rsync qemu-utils zip libfuse-dev neofetch p7zip-full curl device-tree-compiler gperf haveged \
+            help2man intltool lib32gcc-s1 libc6-dev-i386 libglib2.0-dev libgmp3-dev libltdl-dev libmpc-dev \
+            libmpfr-dev libncurses-dev libpython3-dev libreadline-dev libtool libyaml-dev libz-dev lld llvm \
+            lrzsz mkisofs msmtp nano ninja-build p7zip patch pkgconf python3-ply python3-docutils re2c \
+            scons squashfs-tools texinfo uglifyjs upx-ucl vim xmlto xxd zstd zstd
+          pip install requests tqdm
 
-    - name: 检查可用磁盘空间 (Check Available Disk Space After Package Installation)
-      run: |
-        echo "Available disk space after installing packages:"
-        df -h
+      - name: 下载并恢复编译状态 (Download and Restore Build State)
+        if: steps.check-resume.outputs.is_resume == 'true'
+        uses: actions/download-artifact@main
+        with:
+          name: ${{ steps.check-resume.outputs.state_artifact_name }}
+          path: /workdir/state/
 
-    - name: 拉取源码 (Pull Source Code)
-      working-directory: /workdir
-      run: |
-        echo "Cloning source code from: $(cat ${{ env.SOURCE_CODE_URL_FILE }})"
-        git clone $(cat ${{ env.SOURCE_CODE_URL_FILE }}) openwrt
-        echo "Source code cloned successfully"
+      - name: 解压编译状态 (Extract Build State)
+        if: steps.check-resume.outputs.is_resume == 'true'
+        working-directory: /workdir
+        run: |
+          echo "恢复编译状态..."
+          tar -I 'zstd -d' -xf state/openwrt_state.tar.zst
+          rm -rf state
+          echo "恢复完成，当前目录内容:"
+          ls -la openwrt/
 
-    - name: 链接源码目录 (Link Source Code Directory)
-      run: |
-        ln -sf ${{ env.OPENWRT_DIR }} ${{ github.workspace }}/openwrt
-        echo "Linked source code to workspace"
+      - name: 拉取源码 (Pull Source Code) [全新编译时执行]
+        if: steps.check-resume.outputs.is_resume != 'true'
+        working-directory: /workdir
+        run: |
+          git clone $(cat ${{ env.SOURCE_CODE_URL_FILE }}) openwrt
 
-    - name: 更新源码 (Update Source Code)
-      working-directory: ${{ env.OPENWRT_DIR }}
-      run: |
-        git fetch --all
-        git reset --hard origin/HEAD
-        echo "Source code updated to latest version"
+      - name: 链接源码目录 (Link Source Code Directory)
+        run: |
+          ln -sf ${{ env.OPENWRT_DIR }} ${{ github.workspace }}/openwrt
 
-    - name: 更新Feed (Update Feeds)
-      working-directory: ${{ env.OPENWRT_DIR }}
-      run: |
-        ./scripts/feeds update -a
-        echo "Feeds updated successfully"
+      - name: 更新源码 (Update Source Code) [全新编译时执行]
+        if: steps.check-resume.outputs.is_resume != 'true'
+        working-directory: ${{ env.OPENWRT_DIR }}
+        run: |
+          git fetch --all
+          git reset --hard origin/HEAD
 
-    - name: 安装Feed (Install Feeds)
-      working-directory: ${{ env.OPENWRT_DIR }}
-      run: |
-        ./scripts/feeds install -a
-        echo "Feeds installed successfully"
+      - name: 更新并安装Feeds [全新编译时执行]
+        if: steps.check-resume.outputs.is_resume != 'true'
+        working-directory: ${{ env.OPENWRT_DIR }}
+        run: |
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
 
-    - name: 准备配置并下载包 (Prepare Config and Download Packages)
-      working-directory: ${{ env.OPENWRT_DIR }}
-      run: |
-        echo "System information:"
-        sudo neofetch || echo "neofetch not available"
+      - name: 准备配置文件 [全新编译时执行]
+        if: steps.check-resume.outputs.is_resume != 'true'
+        working-directory: ${{ env.OPENWRT_DIR }}
+        run: |
+          cp "${{ env.CONFIG_FILE }}" .config
+          bash ${{ github.workspace }}/script/x-wrt-make-001.sh
 
-        echo "Copying configuration file: ${{ env.CONFIG_FILE }}"
-        cp "${{ env.CONFIG_FILE }}" .config
+      - name: 编译固件并监控超时 (Compile with Timeout Monitoring)
+        id: compile
+        working-directory: ${{ env.OPENWRT_DIR }}
+        timeout-minutes: 350   # 略低于6小时，留出打包上传时间
+        run: |
+          THREAD_COUNT=$(($(nproc) + 1))
+          echo "使用 $THREAD_COUNT 线程编译"
 
-        echo "Starting package downloads..."
-        bash ${{ github.workspace }}/script/x-wrt-make-001.sh
-        echo "Configuration and package preparation completed"
+          # 启动后台编译
+          make -j$THREAD_COUNT V=s &> make.log &
+          MAKE_PID=$!
 
-    - name: 编译固件 (Compile Firmware)
-      working-directory: ${{ env.OPENWRT_DIR }}
-      run: |
-        echo "开始编译设备: ${{ env.DEVICE_NAME }} (Starting compilation for device: ${{ env.DEVICE_NAME }})"
-        THREAD_COUNT=$(($(nproc) + 1))
-        echo "使用 $THREAD_COUNT 线程编译 (Compiling with $THREAD_COUNT threads)"
-        echo "编译已开始，日志文件 make.log (Compilation started, log in make.log)"
+          echo "编译进程 PID: $MAKE_PID，开始监控时间..."
+          while kill -0 $MAKE_PID 2>/dev/null; do
+            sleep 60
+            # 计算当前 job 已运行时间（近似）
+            JOB_START_TIME=$(cat /proc/$PPID/stat 2>/dev/null | awk '{print $22}' || echo 0)
+            CURRENT_TIME=$(($(date +%s) - $JOB_START_TIME))
+            # 设定阈值 330 分钟（19800 秒）
+            if [ $CURRENT_TIME -gt 19800 ]; then
+              echo "::warning::接近任务时间上限，主动停止编译以保存进度。"
+              kill $MAKE_PID
+              wait $MAKE_PID 2>/dev/null || true
+              echo "编译已暂停，准备保存状态。"
+              echo "compile_completed=false" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+          done
 
-        # 检查配置
-        if [ ! -f ".config" ]; then
-          echo "错误：配置文件不存在 (Error: Config file does not exist)"
-          exit 1
-        fi
+          wait $MAKE_PID
+          MAKE_EXIT_CODE=$?
 
-        # 开始编译，日志同时输出到终端和文件
-        make -j$THREAD_COUNT V=s 2>&1 | tee make.log
+          if [ $MAKE_EXIT_CODE -ne 0 ]; then
+            echo "编译失败，请检查日志。"
+            tail -50 make.log
+            exit 1
+          fi
 
-        # 检查编译结果
-        if [ ${PIPESTATUS[0]} -ne 0 ]; then
-          echo "编译失败 (Compilation failed)"
-          tail -50 make.log
-          exit 1
-        fi
+          echo "编译成功完成！"
+          echo "compile_completed=true" >> $GITHUB_OUTPUT
 
-        echo "编译成功完成 (Compilation completed successfully)"
+      - name: 打包编译状态 (Package Build State)
+        if: steps.compile.outputs.compile_completed == 'false'
+        working-directory: /workdir
+        run: |
+          echo "正在打包编译目录以保存进度..."
+          tar -I 'zstd -3 -T0' -cf openwrt_state.tar.zst openwrt
+          mkdir -p state_upload
+          mv openwrt_state.tar.zst state_upload/
 
-        # 提取固件目标目录
-        TARGET_DIR="bin/targets/mediatek/filogic"
-        if [ ! -d "$TARGET_DIR" ]; then
-          echo "错误：固件目录不存在 $TARGET_DIR"
-          exit 1
-        fi
+      - name: 生成状态 Artifact 名称 (Generate Artifact Name)
+        id: artifact-name
+        if: steps.compile.outputs.compile_completed == 'false'
+        run: |
+          ARTIFACT_NAME="openwrt-state-${{ matrix.device }}-$(date +%Y%m%d%H%M%S)"
+          echo "name=$ARTIFACT_NAME" >> $GITHUB_OUTPUT
 
-        echo "TARGET_DIR=$TARGET_DIR" >> $GITHUB_ENV
+      - name: 上传编译状态 (Upload Build State Artifact)
+        if: steps.compile.outputs.compile_completed == 'false'
+        uses: actions/upload-artifact@main
+        with:
+          name: ${{ steps.artifact-name.outputs.name }}
+          path: /workdir/state_upload/
+          retention-days: 7
 
-        # 生成日期时间戳
-        BUILD_DATETIME=$(date +"%Y%m%d%H%M")
-        echo "BUILD_DATETIME=$BUILD_DATETIME" >> $GITHUB_ENV
+      - name: 设置输出变量 (Set Outputs for Downstream Jobs)
+        id: set-output
+        run: |
+          if [ "${{ steps.compile.outputs.compile_completed }}" = "false" ]; then
+            echo "needs_resume=true" >> $GITHUB_OUTPUT
+            echo "resume_device=${{ matrix.device }}" >> $GITHUB_OUTPUT
+            echo "state_artifact_name=${{ steps.artifact-name.outputs.name }}" >> $GITHUB_OUTPUT
+            echo "compile_success=false" >> $GITHUB_OUTPUT
+          else
+            echo "needs_resume=false" >> $GITHUB_OUTPUT
+            echo "resume_device=" >> $GITHUB_OUTPUT
+            echo "state_artifact_name=" >> $GITHUB_OUTPUT
+            echo "compile_success=true" >> $GITHUB_OUTPUT
 
-        echo "设备: ${{ env.DEVICE_NAME }}"
-        echo "构建时间: $BUILD_DATETIME"
+            # 记录固件目录等信息
+            TARGET_DIR="bin/targets/mediatek/filogic"
+            echo "TARGET_DIR=$TARGET_DIR" >> $GITHUB_ENV
+            BUILD_DATETIME=$(date +"%Y%m%d%H%M")
+            echo "BUILD_DATETIME=$BUILD_DATETIME" >> $GITHUB_ENV
+          fi
 
-    - name: 压缩bin目录 (Compress Full Bin Directory)
-      working-directory: ${{ env.OPENWRT_DIR }}
-      run: |
-        echo "压缩完整bin目录 (Compressing full bin directory)..."
-        7z a -mx=9 -mmt=$(nproc) bin.7z bin/
-        echo "Bin directory compressed to bin.7z"
+      - name: 压缩完整 bin 目录并整理固件 (Package Artifacts) [编译成功时]
+        if: steps.compile.outputs.compile_completed == 'true'
+        working-directory: ${{ env.OPENWRT_DIR }}
+        run: |
+          7z a -mx=9 -mmt=$(nproc) bin.7z bin/
+          TARGET_DIR="bin/targets/mediatek/filogic"
+          mv bin.7z "$TARGET_DIR/"
+          mv make.log "$TARGET_DIR/"
+          cd "$TARGET_DIR"
+          rm -rf packages
+          echo "固件文件列表:"
+          ls -la *.bin *.img *.trx *.chk *.sys *.rom *.fit *.itb *.7z *.log 2>/dev/null || true
 
-        # 移动到固件目录以便统一上传
-        mv bin.7z "${{ env.TARGET_DIR }}/"
-        mv make.log "${{ env.TARGET_DIR }}/"
-        echo "Files moved to ${{ env.TARGET_DIR }}"
+  trigger-resume:
+    needs: compile
+    if: always() && needs.compile.result == 'success' && needs.compile.outputs.needs_resume == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: 触发恢复编译 (Trigger Resume Workflow)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          DEVICE="${{ needs.compile.outputs.resume_device }}"
+          ARTIFACT="${{ needs.compile.outputs.state_artifact_name }}"
+          echo "将为设备 $DEVICE 触发新的恢复运行，Artifact: $ARTIFACT"
 
-    - name: 检查最终空间使用情况 (Check Final Space Usage)
-      if: always()
-      run: |
-        echo "Final disk usage:"
-        df -hT
-        echo "OpenWRT directory size:"
-        du -sh ${{ env.OPENWRT_DIR }}
+          # 使用 GitHub CLI 触发 workflow_dispatch
+          gh workflow run "Build-immortalwrt.yml" \
+            --repo "${{ github.repository }}" \
+            --ref "${{ github.ref }}" \
+            --field resume_device="$DEVICE" \
+            --field state_artifact_name="$ARTIFACT"
 
-    - name: 整理固件文件 (Organize Firmware Files)
-      run: |
-        cd "${{ env.OPENWRT_DIR }}/${{ env.TARGET_DIR }}"
-        echo "Removing packages directory..."
-        rm -rf packages
+          echo "恢复任务已触发。当前工作流实例将正常结束。"
 
-        echo "固件文件列表 (Firmware files):"
-        ls -la *.bin *.img *.trx *.chk *.sys *.rom *.fit *.itb *.7z *.log 2>/dev/null || echo "No standard firmware files found"
-        find . -maxdepth 1 \( -name "*.bin" -o -name "*.img" -o -name "*.trx" -o -name "*.chk" -o -name "*.sys" -o -name "*.rom" -o -name "*.fit" -o -name "*.itb" -o -name "*factory*" -o -name "*sysupgrade*" -o -name "*.7z" -o -name "make.log" \) -type f
+  release:
+    needs: compile
+    if: needs.compile.result == 'success' && needs.compile.outputs.compile_success == 'true'
+    runs-on: ubuntu-24.04
+    env:
+      DEVICE_NAME: ${{ matrix.device }}
+      TARGET_DIR: bin/targets/mediatek/filogic
+      BUILD_DATETIME: ${{ needs.compile.outputs.build_datetime || '' }}
+    steps:
+      - name: 检查仓库 (Checkout Repository)
+        uses: actions/checkout@main
+        with:
+          fetch-depth: 1
 
-    - name: 生成发布标签与描述 (Generate Release Tag and Description)
-      id: tag
-      run: |
-        RELEASE_TAG="${{ env.DEVICE_NAME }}-${{ env.BUILD_DATETIME }}"
-        echo "release_tag=$RELEASE_TAG" >> $GITHUB_OUTPUT
-        echo "Generated release tag: $RELEASE_TAG"
+      - name: 下载固件 Artifact (Download Firmware Artifact)
+        uses: actions/download-artifact@main
+        with:
+          name: openwrt-firmware-${{ matrix.device }}
+          path: firmware/
 
-        cat > release.txt <<EOF
-        ImmortalWRT Build for ${{ env.DEVICE_NAME }}
-        ==========================================
-        Build Date: $(date)
-        Device: ${{ env.DEVICE_NAME }}
-        Target: mediatek/filogic
-        Config File: $(basename "${{ env.CONFIG_FILE }}")
-        Source Code: $(cat ${{ env.SOURCE_CODE_URL_FILE }})
+      - name: 生成 Release 描述 (Generate Release Description)
+        id: tag
+        run: |
+          RELEASE_TAG="${{ matrix.device }}-${{ env.BUILD_DATETIME }}"
+          echo "release_tag=$RELEASE_TAG" >> $GITHUB_OUTPUT
 
-        Included Files:
-        - Full bin.7z (complete bin directory compressed)
-        - Firmware images (factory/sysupgrade)
-        - Compilation log (make.log)
-        EOF
+          cat > release.txt <<EOF
+          ImmortalWRT Build for ${{ matrix.device }}
+          ==========================================
+          Build Date: $(date)
+          Device: ${{ matrix.device }}
+          Target: mediatek/filogic
+          Config File: $(basename "${{ matrix.config }}")
+          Source Code: $(cat ${{ env.SOURCE_CODE_URL_FILE }})
 
-        echo "Release description:"
-        cat release.txt
+          Included Files:
+          - Full bin.7z (complete bin directory compressed)
+          - Firmware images (factory/sysupgrade)
+          - Compilation log (make.log)
+          EOF
 
-    - name: 发布固件 (Release Firmware)
-      uses: softprops/action-gh-release@master
-      if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ steps.tag.outputs.release_tag }}
-        name: "ImmortalWRT ${{ env.DEVICE_NAME }} - ${{ env.BUILD_DATETIME }}"
-        body_path: release.txt
-        files: ${{ env.OPENWRT_DIR }}/${{ env.TARGET_DIR }}/*
-        draft: false
-        prerelease: false
+      - name: 发布固件 (Create Release)
+        uses: softprops/action-gh-release@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.tag.outputs.release_tag }}
+          name: "ImmortalWRT ${{ matrix.device }} - ${{ env.BUILD_DATETIME }}"
+          body_path: release.txt
+          files: firmware/*
+          draft: false
+          prerelease: false
