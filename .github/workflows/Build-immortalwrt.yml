@@ -1,5 +1,5 @@
 # https://github.com/QC3284/openwrt-actions
-# File name: Build-immortalwrt.yml (Fixed Version)
+# File name: Build-immortalwrt.yml (Multi-Config Parallel Build)
 #
 # Copyright (c) 2026 QC3284 <https://www.xcqcoo.top>
 #
@@ -18,11 +18,95 @@ env:
   TZ: Asia/Shanghai
   OPENWRT_DIR: /workdir/openwrt
   SOURCE_CODE_URL_FILE: ${{ github.workspace }}/config/immortalwrt-url.txt
-  CONFIG_FILE_PATH: ${{ github.workspace }}/config/$(cat ${{ github.workspace }}/config/immortalwrt-config_name.txt)
 
 jobs:
-  build:
+  prepare:
     runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: 检查仓库 (Checkout Repository)
+        uses: actions/checkout@main
+        with:
+          fetch-depth: 1
+
+      - name: 生成编译矩阵 (Generate Build Matrix)
+      id: set-matrix
+      run: |
+        ENABLE_FILE="${{ github.workspace }}/immortalwrt-mt7981-enable-configs.txt"
+        CONFIG_DIR="${{ github.workspace }}/config/immortalwrt-mt7981"
+
+        if [ ! -f "$ENABLE_FILE" ]; then
+          echo "::error::启用配置文件不存在: $ENABLE_FILE"
+          exit 1
+        fi
+
+        # 读取要编译的设备名列表，存入数组
+        mapfile -t ENABLED_DEVICES < <(grep -v '^[[:space:]]*#' "$ENABLE_FILE" | grep -v '^[[:space:]]*$')
+        if [ ${#ENABLED_DEVICES[@]} -eq 0 ]; then
+          echo "::error::启用配置文件中未包含任何设备"
+          exit 1
+        fi
+        echo "启用的设备: ${ENABLED_DEVICES[*]}"
+
+        # 扫描配置文件目录，匹配格式：immortalwrt-actions-mt7981-*.config
+        # 文件名格式：immortalwrt-actions-mt7981-{设备名}-{14位日期}.config
+        # 使用正则提取设备名和日期，并找出每个设备的最新文件
+        declare -A LATEST_CONFIGS
+        while IFS= read -r -d '' file; do
+          filename=$(basename "$file")
+          # 提取设备名：去掉前缀和日期后缀，日期为14位数字
+          if [[ "$filename" =~ ^immortalwrt-actions-mt7981-(.+)-([0-9]{14})\.config$ ]]; then
+            device="${BASH_REMATCH[1]}"
+            datetime="${BASH_REMATCH[2]}"
+            # 检查该设备是否在启用列表中
+            if [[ " ${ENABLED_DEVICES[*]} " == *" $device "* ]]; then
+              if [[ -z "${LATEST_CONFIGS[$device]}" ]] || [[ "$datetime" > "${LATEST_DATETIME[$device]}" ]]; then
+                LATEST_CONFIGS["$device"]="$file"
+                LATEST_DATETIME["$device"]="$datetime"
+              fi
+            fi
+          fi
+        done < <(find "$CONFIG_DIR" -maxdepth 1 -type f -name "immortalwrt-actions-mt7981-*.config" -print0)
+
+        # 输出匹配结果
+        for dev in "${!LATEST_CONFIGS[@]}"; do
+          echo "设备 [$dev] 使用配置: ${LATEST_CONFIGS[$dev]} (日期: ${LATEST_DATETIME[$dev]})"
+        done
+
+        # 生成 JSON 矩阵
+        JSON_ARRAY="["
+        first=true
+        for dev in "${ENABLED_DEVICES[@]}"; do
+          if [ -n "${LATEST_CONFIGS[$dev]}" ]; then
+            if [ "$first" = true ]; then
+              first=false
+            else
+              JSON_ARRAY+=","
+            fi
+            JSON_ARRAY+="{\"device\":\"$dev\",\"config\":\"${LATEST_CONFIGS[$dev]}\"}"
+          else
+            echo "::warning::设备 [$dev] 在启用列表中但未找到对应的配置文件，已跳过"
+          fi
+        done
+        JSON_ARRAY+="]"
+
+        echo "matrix=$JSON_ARRAY" >> $GITHUB_OUTPUT
+        echo "::group::生成的矩阵 JSON"
+        echo "$JSON_ARRAY" | jq .
+        echo "::endgroup::"
+
+  build:
+    needs: prepare
+    if: needs.prepare.outputs.matrix != '[]'
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(needs.prepare.outputs.matrix) }}
+    env:
+      DEVICE_NAME: ${{ matrix.device }}
+      CONFIG_FILE: ${{ matrix.config }}
 
     steps:
     - name: 检查仓库 (Checkout Repository)
@@ -146,7 +230,6 @@ jobs:
         df -h
 
     - name: 拉取源码 (Pull Source Code)
-      if: steps.cache-openwrt.outputs.cache-hit != 'true'
       working-directory: /workdir
       run: |
         echo "Cloning source code from: $(cat ${{ env.SOURCE_CODE_URL_FILE }})"
@@ -183,8 +266,8 @@ jobs:
         echo "System information:"
         sudo neofetch || echo "neofetch not available"
 
-        echo "Copying configuration file..."
-        cp "${{ env.CONFIG_FILE_PATH }}" .config
+        echo "Copying configuration file: ${{ env.CONFIG_FILE }}"
+        cp "${{ env.CONFIG_FILE }}" .config
 
         echo "Starting package downloads..."
         bash ${{ github.workspace }}/script/x-wrt-make-001.sh
@@ -193,7 +276,7 @@ jobs:
     - name: 编译固件 (Compile Firmware)
       working-directory: ${{ env.OPENWRT_DIR }}
       run: |
-        echo "开始编译 (Starting compilation)"
+        echo "开始编译设备: ${{ env.DEVICE_NAME }} (Starting compilation for device: ${{ env.DEVICE_NAME }})"
         echo -e "$(nproc) thread compile"
         echo "编译已开始，日志文件 make.log (Compilation started, log in make.log)"
 
@@ -215,74 +298,33 @@ jobs:
 
         echo "编译成功完成 (Compilation completed successfully)"
 
-        # 改进设备名称提取 - 修复原始脚本中的问题
-        echo "提取设备信息 (Extracting device info)..."
-
-        # 尝试多种方法获取设备名称
-        DEVICE_NAME=""
-
-        # 方法1: 直接从.config文件中查找特定设备配置
-        if grep -q "CONFIG_TARGET_DEVICE_mediatek_filogic=y" .config; then
-            # 从CONFIG_TARGET_DEVICE_..._DEVICE_...=y模式中提取设备名
-            DEVICE_NAME=$(grep -E "^CONFIG_TARGET.*DEVICE.*=y" .config | grep -v "CONFIG_TARGET_DEVICE_" | head -n1 | sed -r 's/.*DEVICE_(.*)=y/\1/')
-        else
-            # 方法2: 如果不是filogic目标，尝试通用方法
-            DEVICE_NAME=$(grep -E "^CONFIG_TARGET.*DEVICE.*=y" .config | head -n1 | sed -r 's/.*DEVICE_(.*)=y/\1/')
-        fi
-
-        # 如果上面的方法失败，尝试从.config文件的其他部分推断
-        if [ -z "$DEVICE_NAME" ] || [ "$DEVICE_NAME" = "" ]; then
-            echo "警告：无法从标准配置中检测到设备名称，尝试替代方法 (Warning: Could not detect device name from standard config, trying alternative methods)"
-
-            # 检查是否有MT7981相关配置
-            if grep -q "mt7981\|MT7981\|Filogic\|filogic" .config; then
-                DEVICE_NAME="mt7981_generic"
-                echo "检测到MT7981相关配置 (Detected MT7981 related config)"
-            else
-                # 最后的备用方案：尝试从.config文件的其他部分获取目标信息
-                TARGET_INFO=$(grep -E "^CONFIG_TARGET_" .config | grep -v "DEVICE" | head -n3 | tr '\n' '_' | sed 's/_$//')
-                if [ -n "$TARGET_INFO" ] && [ ${#TARGET_INFO} -lt 30 ]; then
-                    DEVICE_NAME="$TARGET_INFO"
-                else
-                    DEVICE_NAME="unknown"
-                fi
-            fi
-        fi
-
-        # 确保设备名称不包含特殊字符
-        DEVICE_NAME=$(echo "$DEVICE_NAME" | sed 's/[^a-zA-Z0-9_-]/_/g')
-
-        echo "DETECTED_DEVICE_NAME=$DEVICE_NAME" >> $GITHUB_ENV
-        echo "DEVICE_NAME=_$DEVICE_NAME" >> $GITHUB_ENV
-        echo "Detected device: $DEVICE_NAME"
-
-        echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
-        echo "Build date: $(date)"
-
-    - name: 压缩固件文件 (Compress Firmware Files)
-      working-directory: ${{ env.OPENWRT_DIR }}
-      run: |
-        echo "压缩bin目录...... (Compressing bin directories ......)"
-
-        # 检查bin目录是否存在
-        if [ ! -d "bin" ]; then
-          echo "错误：bin目录不存在 (Error: bin directory does not exist)"
+        # 提取固件目标目录
+        TARGET_DIR="bin/targets/mediatek/filogic"
+        if [ ! -d "$TARGET_DIR" ]; then
+          echo "错误：固件目录不存在 $TARGET_DIR"
           exit 1
         fi
 
-        # 创建压缩文件
+        echo "TARGET_DIR=$TARGET_DIR" >> $GITHUB_ENV
+
+        # 生成日期时间戳
+        BUILD_DATETIME=$(date +"%Y%m%d%H%M")
+        echo "BUILD_DATETIME=$BUILD_DATETIME" >> $GITHUB_ENV
+
+        echo "设备: ${{ env.DEVICE_NAME }}"
+        echo "构建时间: $BUILD_DATETIME"
+
+    - name: 压缩bin目录 (Compress Full Bin Directory)
+      working-directory: ${{ env.OPENWRT_DIR }}
+      run: |
+        echo "压缩完整bin目录 (Compressing full bin directory)..."
         7z a -mx=9 -mmt=$(nproc) bin.7z bin/
         echo "Bin directory compressed to bin.7z"
 
-        # 移动到目标位置
-        TARGET_DIR="bin/targets/mediatek/filogic"
-        if [ -d "$TARGET_DIR" ]; then
-          mv bin.7z "$TARGET_DIR/"
-          mv make.log "$TARGET_DIR/"
-          echo "Files moved to $TARGET_DIR"
-        else
-          echo "警告：目标目录不存在 $TARGET_DIR (Warning: Target directory does not exist: $TARGET_DIR)"
-        fi
+        # 移动到固件目录以便统一上传
+        mv bin.7z "${{ env.TARGET_DIR }}/"
+        mv make.log "${{ env.TARGET_DIR }}/"
+        echo "Files moved to ${{ env.TARGET_DIR }}"
 
     - name: 检查最终空间使用情况 (Check Final Space Usage)
       if: always()
@@ -292,60 +334,40 @@ jobs:
         echo "OpenWRT directory size:"
         du -sh ${{ env.OPENWRT_DIR }}
 
-    - name: 上传完整bin目录 (Upload Full Bin Directory)
-      uses: actions/upload-artifact@main
-      with:
-        name: OpenWrt_bin${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
-        path: ${{ env.OPENWRT_DIR }}/bin
-        retention-days: 30
-        compression-level: 9
-
     - name: 整理固件文件 (Organize Firmware Files)
-      id: organize
       run: |
-        FIRMWARE_DIR="${{ env.OPENWRT_DIR }}/bin/targets/mediatek/filogic"
+        cd "${{ env.OPENWRT_DIR }}/${{ env.TARGET_DIR }}"
+        echo "Removing packages directory..."
+        rm -rf packages
 
-        if [ -d "$FIRMWARE_DIR" ]; then
-          cd "$FIRMWARE_DIR"
-          echo "Removing packages directory..."
-          rm -rf packages
+        echo "固件文件列表 (Firmware files):"
+        ls -la *.bin *.img *.trx *.chk *.sys *.rom *.fit *.7z *.log 2>/dev/null || echo "No standard firmware files found"
+        find . -maxdepth 1 \( -name "*.bin" -o -name "*.img" -o -name "*.trx" -o -name "*.chk" -o -name "*.sys" -o -name "*.rom" -o -name "*.fit" -o -name "*factory*" -o -name "*sysupgrade*" -o -name "*.7z" -o -name "make.log" \) -type f
 
-          echo "FIRMWARE=$FIRMWARE_DIR" >> $GITHUB_ENV
-          echo "Found firmware in: $FIRMWARE_DIR"
-
-          # 列出找到的所有固件文件（支持多种格式）
-          echo "查找固件文件 (Looking for firmware files)..."
-          ls -la *.bin *.img *.trx *.chk *.sys *.rom *.fit *.gz || echo "No firmware files found with common extensions"
-          # 同时列出所有可能的固件文件
-          find . -maxdepth 1 \( -name "*.bin" -o -name "*.img" -o -name "*.trx" -o -name "*.chk" -o -name "*.sys" -o -name "*.rom" -o -name "*.fit" -o -name "*factory*" -o -name "*sysupgrade*" \) -type f
-        else
-          echo "错误：固件目录不存在 $FIRMWARE_DIR (Error: Firmware directory does not exist: $FIRMWARE_DIR)"
-          exit 1
-        fi
-
-    - name: 上传固件文件 (Upload Firmware Files)
-      uses: actions/upload-artifact@main
-      with:
-        name: OpenWrt_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
-        path: ${{ env.FIRMWARE }}
-        retention-days: 30
-        compression-level: 9
-
-    - name: 生成发布标签 (Generate Release Tags)
+    - name: 生成发布标签与描述 (Generate Release Tag and Description)
       id: tag
       run: |
-        RELEASE_TAG=$(date +"%Y.%m.%d-%H%M")-immortalwrt
+        RELEASE_TAG="${{ env.DEVICE_NAME }}-${{ env.BUILD_DATETIME }}"
         echo "release_tag=$RELEASE_TAG" >> $GITHUB_OUTPUT
         echo "Generated release tag: $RELEASE_TAG"
 
-        touch release.txt
-        echo "ImmortalWRT Build - $RELEASE_TAG" > release.txt
-        echo "Built on: $(date)" >> release.txt
-        echo "Device: ${{ env.DETECTED_DEVICE_NAME }}" >> release.txt
-        echo "Target: mediatek/filogic" >> release.txt
-        echo "Config file used: $(basename ${{ env.CONFIG_FILE_PATH }})" >> release.txt
+        cat > release.txt <<EOF
+        ImmortalWRT Build for ${{ env.DEVICE_NAME }}
+        ==========================================
+        Build Date: $(date)
+        Device: ${{ env.DEVICE_NAME }}
+        Target: mediatek/filogic
+        Config File: $(basename "${{ env.CONFIG_FILE }}")
+        Source Code: $(cat ${{ env.SOURCE_CODE_URL_FILE }})
 
-        bash ${{ github.workspace }}/script/immortalwrt-actions-txt.sh >> release.txt
+        Included Files:
+        - Full bin.7z (complete bin directory compressed)
+        - Firmware images (factory/sysupgrade)
+        - Compilation log (make.log)
+        EOF
+
+        echo "Release description:"
+        cat release.txt
 
     - name: 发布固件 (Release Firmware)
       uses: softprops/action-gh-release@master
@@ -354,8 +376,8 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         tag_name: ${{ steps.tag.outputs.release_tag }}
-        name: "ImmortalWRT Build ${{ steps.tag.outputs.release_tag }}"
+        name: "ImmortalWRT ${{ env.DEVICE_NAME }} - ${{ env.BUILD_DATETIME }}"
         body_path: release.txt
-        files: ${{ env.FIRMWARE }}/*
+        files: ${{ env.OPENWRT_DIR }}/${{ env.TARGET_DIR }}/*
         draft: false
         prerelease: false
