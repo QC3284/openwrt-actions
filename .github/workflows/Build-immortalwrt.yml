@@ -115,6 +115,10 @@ jobs:
       resume_device: ${{ steps.set-output.outputs.resume_device }}
       state_artifact_name: ${{ steps.set-output.outputs.state_artifact_name }}
       compile_success: ${{ steps.set-output.outputs.compile_success }}
+      device: ${{ steps.set-output.outputs.device }}
+      config_file: ${{ steps.set-output.outputs.config_file }}
+      build_datetime: ${{ steps.set-output.outputs.build_datetime }}
+      target_dir: ${{ steps.set-output.outputs.target_dir }}
     steps:
       - name: 检查仓库 (Checkout Repository)
         uses: actions/checkout@main
@@ -228,27 +232,28 @@ jobs:
           MAKE_PID=$!
           echo "编译进程 PID: $MAKE_PID"
 
-          # 使用 SECONDS 内置变量记录本步骤已运行秒数
           SECONDS=0
-          TIMEOUT_SECONDS=$(( 330 * 60 ))   # 330 分钟，留出打包上传时间
+          TIMEOUT_SECONDS=$(( 330 * 60 ))   # 330 分钟
 
           while kill -0 $MAKE_PID 2>/dev/null; do
             sleep 10
             if [ $SECONDS -gt $TIMEOUT_SECONDS ]; then
               echo "::warning::编译已运行 ${SECONDS} 秒，接近任务时间上限，主动停止以保存进度。"
-              # 优雅终止
-              kill -TERM $MAKE_PID
-              # 等待最多 30 秒
+              # 彻底终止整个进程树
+              pkill -P $MAKE_PID 2>/dev/null || true
+              kill -TERM $MAKE_PID 2>/dev/null || true
+              # 等待最多 30 秒让进程退出
               for i in {1..30}; do
                 if ! kill -0 $MAKE_PID 2>/dev/null; then
                   break
                 fi
                 sleep 1
               done
-              # 若仍未退出，强制杀死
+              # 如果仍然存在，强制杀死
               if kill -0 $MAKE_PID 2>/dev/null; then
-                echo "进程未响应 SIGTERM，发送 SIGKILL"
-                kill -KILL $MAKE_PID
+                echo "进程未响应，强制终止"
+                pkill -KILL -P $MAKE_PID 2>/dev/null || true
+                kill -KILL $MAKE_PID 2>/dev/null || true
               fi
               wait $MAKE_PID 2>/dev/null || true
               echo "compile_completed=false" >> $GITHUB_OUTPUT
@@ -273,7 +278,8 @@ jobs:
         working-directory: /workdir
         run: |
           echo "正在打包编译目录以保存进度..."
-          tar -I 'zstd -3 -T0' -cf openwrt_state.tar.zst openwrt
+          # 排除 tmp 目录（临时文件），保留 .git 目录
+          tar --exclude='openwrt/tmp' -I 'zstd -3 -T0' -cf openwrt_state.tar.zst openwrt
           mkdir -p state_upload
           mv openwrt_state.tar.zst state_upload/
 
@@ -295,22 +301,28 @@ jobs:
       - name: 设置输出变量 (Set Outputs for Downstream Jobs)
         id: set-output
         run: |
+          # 设备基本信息
+          echo "device=${{ matrix.device }}" >> $GITHUB_OUTPUT
+          echo "config_file=${{ matrix.config }}" >> $GITHUB_OUTPUT
+
+          TARGET_DIR="bin/targets/mediatek/filogic"
+          BUILD_DATETIME=$(date +"%Y%m%d%H%M")
+
           if [ "${{ steps.compile.outputs.compile_completed }}" = "false" ]; then
             echo "needs_resume=true" >> $GITHUB_OUTPUT
             echo "resume_device=${{ matrix.device }}" >> $GITHUB_OUTPUT
             echo "state_artifact_name=${{ steps.artifact-name.outputs.name }}" >> $GITHUB_OUTPUT
             echo "compile_success=false" >> $GITHUB_OUTPUT
+            # 即使未完成也输出这些变量，以便后续可能使用
+            echo "build_datetime=$BUILD_DATETIME" >> $GITHUB_OUTPUT
+            echo "target_dir=$TARGET_DIR" >> $GITHUB_OUTPUT
           else
             echo "needs_resume=false" >> $GITHUB_OUTPUT
             echo "resume_device=" >> $GITHUB_OUTPUT
             echo "state_artifact_name=" >> $GITHUB_OUTPUT
             echo "compile_success=true" >> $GITHUB_OUTPUT
-
-            # 记录固件目录等信息
-            TARGET_DIR="bin/targets/mediatek/filogic"
-            echo "TARGET_DIR=$TARGET_DIR" >> $GITHUB_ENV
-            BUILD_DATETIME=$(date +"%Y%m%d%H%M")
-            echo "BUILD_DATETIME=$BUILD_DATETIME" >> $GITHUB_ENV
+            echo "build_datetime=$BUILD_DATETIME" >> $GITHUB_OUTPUT
+            echo "target_dir=$TARGET_DIR" >> $GITHUB_OUTPUT
           fi
 
       - name: 压缩完整 bin 目录并整理固件 (Package Artifacts) [编译成功时]
@@ -359,10 +371,6 @@ jobs:
     needs: compile
     if: needs.compile.result == 'success' && needs.compile.outputs.compile_success == 'true'
     runs-on: ubuntu-24.04
-    env:
-      DEVICE_NAME: ${{ matrix.device }}
-      TARGET_DIR: bin/targets/mediatek/filogic
-      BUILD_DATETIME: ${{ needs.compile.outputs.build_datetime || '' }}
     steps:
       - name: 检查仓库 (Checkout Repository)
         uses: actions/checkout@main
@@ -372,22 +380,24 @@ jobs:
       - name: 下载固件 Artifact (Download Firmware Artifact)
         uses: actions/download-artifact@main
         with:
-          name: openwrt-firmware-${{ matrix.device }}
+          name: openwrt-firmware-${{ needs.compile.outputs.device }}
           path: firmware/
 
       - name: 生成 Release 描述 (Generate Release Description)
         id: tag
         run: |
-          RELEASE_TAG="${{ matrix.device }}-${{ env.BUILD_DATETIME }}"
+          DEVICE="${{ needs.compile.outputs.device }}"
+          BUILD_DATETIME="${{ needs.compile.outputs.build_datetime }}"
+          RELEASE_TAG="${DEVICE}-${BUILD_DATETIME}"
           echo "release_tag=$RELEASE_TAG" >> $GITHUB_OUTPUT
 
           cat > release.txt <<EOF
-          ImmortalWRT Build for ${{ matrix.device }}
+          ImmortalWRT Build for $DEVICE
           ==========================================
           Build Date: $(date)
-          Device: ${{ matrix.device }}
+          Device: $DEVICE
           Target: mediatek/filogic
-          Config File: $(basename "${{ matrix.config }}")
+          Config File: $(basename "${{ needs.compile.outputs.config_file }}")
           Source Code: $(cat ${{ env.SOURCE_CODE_URL_FILE }})
 
           Included Files:
@@ -402,7 +412,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ steps.tag.outputs.release_tag }}
-          name: "ImmortalWRT ${{ matrix.device }} - ${{ env.BUILD_DATETIME }}"
+          name: "ImmortalWRT ${{ needs.compile.outputs.device }} - ${{ needs.compile.outputs.build_datetime }}"
           body_path: release.txt
           files: firmware/*
           draft: false
