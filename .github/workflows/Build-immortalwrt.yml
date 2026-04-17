@@ -239,17 +239,14 @@ jobs:
             sleep 10
             if [ $SECONDS -gt $TIMEOUT_SECONDS ]; then
               echo "::warning::编译已运行 ${SECONDS} 秒，接近任务时间上限，主动停止以保存进度。"
-              # 彻底终止整个进程树
               pkill -P $MAKE_PID 2>/dev/null || true
               kill -TERM $MAKE_PID 2>/dev/null || true
-              # 等待最多 30 秒让进程退出
               for i in {1..30}; do
                 if ! kill -0 $MAKE_PID 2>/dev/null; then
                   break
                 fi
                 sleep 1
               done
-              # 如果仍然存在，强制杀死
               if kill -0 $MAKE_PID 2>/dev/null; then
                 echo "进程未响应，强制终止"
                 pkill -KILL -P $MAKE_PID 2>/dev/null || true
@@ -278,7 +275,6 @@ jobs:
         working-directory: /workdir
         run: |
           echo "正在打包编译目录以保存进度..."
-          # 排除 tmp 目录（临时文件），保留 .git 目录
           tar --exclude='openwrt/tmp' -I 'zstd -3 -T0' -cf openwrt_state.tar.zst openwrt
           mkdir -p state_upload
           mv openwrt_state.tar.zst state_upload/
@@ -298,31 +294,33 @@ jobs:
           path: /workdir/state_upload/
           retention-days: 7
 
-      - name: 设置输出变量 (Set Outputs for Downstream Jobs)
+      - name: 设置输出变量与全局环境变量 (Set Outputs and Env)
         id: set-output
         run: |
-          # 设备基本信息
-          echo "device=${{ matrix.device }}" >> $GITHUB_OUTPUT
-          echo "config_file=${{ matrix.config }}" >> $GITHUB_OUTPUT
-
+          # 基本变量
           TARGET_DIR="bin/targets/mediatek/filogic"
           BUILD_DATETIME=$(date +"%Y%m%d%H%M")
+
+          # 将 TARGET_DIR 和 BUILD_DATETIME 写入环境变量，供本 job 后续步骤使用
+          echo "TARGET_DIR=$TARGET_DIR" >> $GITHUB_ENV
+          echo "BUILD_DATETIME=$BUILD_DATETIME" >> $GITHUB_ENV
+
+          # 输出变量，供下游 job 使用
+          echo "device=${{ matrix.device }}" >> $GITHUB_OUTPUT
+          echo "config_file=${{ matrix.config }}" >> $GITHUB_OUTPUT
+          echo "build_datetime=$BUILD_DATETIME" >> $GITHUB_OUTPUT
+          echo "target_dir=$TARGET_DIR" >> $GITHUB_OUTPUT
 
           if [ "${{ steps.compile.outputs.compile_completed }}" = "false" ]; then
             echo "needs_resume=true" >> $GITHUB_OUTPUT
             echo "resume_device=${{ matrix.device }}" >> $GITHUB_OUTPUT
             echo "state_artifact_name=${{ steps.artifact-name.outputs.name }}" >> $GITHUB_OUTPUT
             echo "compile_success=false" >> $GITHUB_OUTPUT
-            # 即使未完成也输出这些变量，以便后续可能使用
-            echo "build_datetime=$BUILD_DATETIME" >> $GITHUB_OUTPUT
-            echo "target_dir=$TARGET_DIR" >> $GITHUB_OUTPUT
           else
             echo "needs_resume=false" >> $GITHUB_OUTPUT
             echo "resume_device=" >> $GITHUB_OUTPUT
             echo "state_artifact_name=" >> $GITHUB_OUTPUT
             echo "compile_success=true" >> $GITHUB_OUTPUT
-            echo "build_datetime=$BUILD_DATETIME" >> $GITHUB_OUTPUT
-            echo "target_dir=$TARGET_DIR" >> $GITHUB_OUTPUT
           fi
 
       - name: 压缩完整 bin 目录并整理固件 (Package Artifacts) [编译成功时]
@@ -330,7 +328,7 @@ jobs:
         working-directory: ${{ env.OPENWRT_DIR }}
         run: |
           7z a -mx=9 -mmt=$(nproc) bin.7z bin/
-          TARGET_DIR="bin/targets/mediatek/filogic"
+          mkdir -p "$TARGET_DIR"
           mv bin.7z "$TARGET_DIR/"
           mv make.log "$TARGET_DIR/"
           cd "$TARGET_DIR"
