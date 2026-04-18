@@ -1,5 +1,5 @@
 # https://github.com/QC3284/openwrt-actions
-# File name: Build-immortalwrt.yml (Resumable Parallel Build)
+# File name: Build-immortalwrt.yml (Optimized for Progress Preservation)
 #
 # Copyright (c) 2026 QC3284 <https://www.xcqcoo.top>
 #
@@ -27,6 +27,11 @@ env:
   TZ: Asia/Shanghai
   OPENWRT_DIR: /workdir/openwrt
   SOURCE_CODE_URL_FILE: ${{ github.workspace }}/config/immortalwrt-url.txt
+
+# 并发控制：同一设备同一时间只允许一个编译任务（包括恢复触发）
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.inputs.resume_device || 'all' }}
+  cancel-in-progress: false
 
 jobs:
   prepare:
@@ -188,6 +193,16 @@ jobs:
           rm -rf state
           echo "恢复完成"
 
+      - name: 恢复后补充 feeds 与下载包 (Post-resume Feeds Update & Download)
+        if: steps.check-resume.outputs.is_resume == 'true'
+        working-directory: ${{ env.OPENWRT_DIR }}
+        run: |
+          echo "重新更新 feeds..."
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+          echo "下载缺失的源码包..."
+          make download -j$(nproc) V=s || true
+
       - name: 拉取源码 (Pull Source Code) [全新编译时执行]
         if: steps.check-resume.outputs.is_resume != 'true'
         working-directory: /workdir
@@ -270,14 +285,32 @@ jobs:
           echo "编译成功完成！"
           echo "compile_completed=true" >> $GITHUB_OUTPUT
 
-      - name: 打包编译状态 (Package Build State)
+      - name: 打包编译状态 (优化压缩与排除，最大化保留进度) (Package Build State - Optimized)
         if: steps.compile.outputs.compile_completed == 'false'
         working-directory: /workdir
         run: |
-          echo "正在打包编译目录以保存进度..."
-          tar --exclude='openwrt/tmp' -I 'zstd -3 -T0' -cf openwrt_state.tar.zst openwrt
+          echo "正在打包编译目录（高压缩等级，排除体积大但重建快的部分，保留目标平台编译进度）..."
+          # 排除规则说明：
+          # - tmp/ : 临时文件
+          # - dl/ : 下载包缓存（恢复后通过 make download 重新获取）
+          # - feeds/ : feeds 索引（恢复后通过 feeds update 重建）
+          # - .git/ : 版本控制元数据，与编译无关
+          # - build_dir/target-*/linux-* : 内核编译中间文件（体积巨大，但内核重编速度快）
+          # - build_dir/target-*/rootfs-* : rootfs 打包临时文件
+          # 保留 build_dir/target-* 下的其他 .o 文件，最大限度保留进度
+          tar \
+            --exclude='openwrt/tmp' \
+            --exclude='openwrt/dl' \
+            --exclude='openwrt/feeds' \
+            --exclude='openwrt/.git' \
+            --exclude='openwrt/build_dir/target-*/linux-*' \
+            --exclude='openwrt/build_dir/target-*/rootfs-*' \
+            -I 'zstd -19 -T0 --long' \
+            -cf openwrt_state.tar.zst openwrt
           mkdir -p state_upload
           mv openwrt_state.tar.zst state_upload/
+          echo "打包完成，压缩包大小："
+          du -h state_upload/openwrt_state.tar.zst
 
       - name: 生成状态 Artifact 名称 (Generate Artifact Name)
         id: artifact-name
@@ -297,15 +330,12 @@ jobs:
       - name: 设置输出变量与全局环境变量 (Set Outputs and Env)
         id: set-output
         run: |
-          # 基本变量
           TARGET_DIR="bin/targets/mediatek/filogic"
           BUILD_DATETIME=$(date +"%Y%m%d%H%M")
 
-          # 将 TARGET_DIR 和 BUILD_DATETIME 写入环境变量，供本 job 后续步骤使用
           echo "TARGET_DIR=$TARGET_DIR" >> $GITHUB_ENV
           echo "BUILD_DATETIME=$BUILD_DATETIME" >> $GITHUB_ENV
 
-          # 输出变量，供下游 job 使用
           echo "device=${{ matrix.device }}" >> $GITHUB_OUTPUT
           echo "config_file=${{ matrix.config }}" >> $GITHUB_OUTPUT
           echo "build_datetime=$BUILD_DATETIME" >> $GITHUB_OUTPUT
@@ -357,6 +387,9 @@ jobs:
           ARTIFACT="${{ needs.compile.outputs.state_artifact_name }}"
           echo "将为设备 $DEVICE 触发新的恢复运行，Artifact: $ARTIFACT"
 
+          # 等待片刻，避免瞬间并发触发过多
+          sleep 5
+
           gh workflow run "Build-immortalwrt.yml" \
             --repo "${{ github.repository }}" \
             --ref "${{ github.ref }}" \
@@ -381,12 +414,12 @@ jobs:
           name: openwrt-firmware-${{ needs.compile.outputs.device }}
           path: firmware/
 
-      - name: 生成 Release 描述 (Generate Release Description)
+      - name: 生成 Release 描述与唯一标签 (Generate Release Description & Unique Tag)
         id: tag
         run: |
           DEVICE="${{ needs.compile.outputs.device }}"
           BUILD_DATETIME="${{ needs.compile.outputs.build_datetime }}"
-          RELEASE_TAG="${DEVICE}-${BUILD_DATETIME}"
+          RELEASE_TAG="${DEVICE}-${BUILD_DATETIME}-${{ github.run_id }}"
           echo "release_tag=$RELEASE_TAG" >> $GITHUB_OUTPUT
 
           cat > release.txt <<EOF

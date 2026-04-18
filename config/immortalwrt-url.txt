@@ -1,1 +1,1 @@
--b 25.12 https://github.com/chasey-dev/immortalwrt-mt798x-rebase
+-b 25.12 https://github.com/QC3284/immortalwrt-mt798x-rebase
