@@ -233,7 +233,7 @@ jobs:
           echo "编译进程 PID: $MAKE_PID"
 
           SECONDS=0
-          TIMEOUT_SECONDS=$(( 330 * 60 ))   # 330 分钟
+          TIMEOUT_SECONDS=$(( 300 * 60 ))   # 300 分钟
 
           while kill -0 $MAKE_PID 2>/dev/null; do
             sleep 10
