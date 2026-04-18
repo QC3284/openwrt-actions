@@ -1,5 +1,5 @@
 # https://github.com/QC3284/openwrt-actions
-# File name: Build-immortalwrt.yml (Optimized for Progress Preservation)
+# File name: Build-immortalwrt.yml (Optimized with Split Upload & Fast Compression)
 #
 # Copyright (c) 2026 QC3284 <https://www.xcqcoo.top>
 #
@@ -28,7 +28,6 @@ env:
   OPENWRT_DIR: /workdir/openwrt
   SOURCE_CODE_URL_FILE: ${{ github.workspace }}/config/immortalwrt-url.txt
 
-# 并发控制：同一设备同一时间只允许一个编译任务（包括恢复触发）
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.inputs.resume_device || 'all' }}
   cancel-in-progress: false
@@ -184,13 +183,15 @@ jobs:
           name: ${{ steps.check-resume.outputs.state_artifact_name }}
           path: /workdir/state/
 
-      - name: 解压编译状态 (Extract Build State)
+      - name: 合并分片并解压编译状态 (Merge Parts and Extract Build State)
         if: steps.check-resume.outputs.is_resume == 'true'
         working-directory: /workdir
         run: |
-          echo "恢复编译状态..."
-          tar -I 'zstd -d' -xf state/openwrt_state.tar.zst
-          rm -rf state
+          echo "正在合并分片..."
+          cat state/openwrt_state_part_* > openwrt_state.tar.zst
+          echo "合并完成，开始解压..."
+          tar -I 'zstd -d' -xf openwrt_state.tar.zst
+          rm -rf state openwrt_state.tar.zst
           echo "恢复完成"
 
       - name: 恢复后补充 feeds 与下载包 (Post-resume Feeds Update & Download)
@@ -285,19 +286,12 @@ jobs:
           echo "编译成功完成！"
           echo "compile_completed=true" >> $GITHUB_OUTPUT
 
-      - name: 打包编译状态 (优化压缩与排除，最大化保留进度) (Package Build State - Optimized)
+      - name: 打包编译状态并分片 (Package & Split Build State)
         if: steps.compile.outputs.compile_completed == 'false'
         working-directory: /workdir
         run: |
-          echo "正在打包编译目录（高压缩等级，排除体积大但重建快的部分，保留目标平台编译进度）..."
-          # 排除规则说明：
-          # - tmp/ : 临时文件
-          # - dl/ : 下载包缓存（恢复后通过 make download 重新获取）
-          # - feeds/ : feeds 索引（恢复后通过 feeds update 重建）
-          # - .git/ : 版本控制元数据，与编译无关
-          # - build_dir/target-*/linux-* : 内核编译中间文件（体积巨大，但内核重编速度快）
-          # - build_dir/target-*/rootfs-* : rootfs 打包临时文件
-          # 保留 build_dir/target-* 下的其他 .o 文件，最大限度保留进度
+          echo "正在打包编译目录（快速压缩 zstd -5，排除可重建内容）..."
+          # 排除规则：tmp、dl、feeds、.git 以及内核编译/rootfs 中间文件
           tar \
             --exclude='openwrt/tmp' \
             --exclude='openwrt/dl' \
@@ -305,12 +299,19 @@ jobs:
             --exclude='openwrt/.git' \
             --exclude='openwrt/build_dir/target-*/linux-*' \
             --exclude='openwrt/build_dir/target-*/rootfs-*' \
-            -I 'zstd -19 -T0 --long' \
+            -I 'zstd -5 -T0' \
             -cf openwrt_state.tar.zst openwrt
-          mkdir -p state_upload
-          mv openwrt_state.tar.zst state_upload/
+
           echo "打包完成，压缩包大小："
-          du -h state_upload/openwrt_state.tar.zst
+          du -h openwrt_state.tar.zst
+
+          echo "分割压缩包为 1GB 分片..."
+          mkdir -p state_upload
+          split -b 1G -d openwrt_state.tar.zst state_upload/openwrt_state_part_
+          rm -f openwrt_state.tar.zst
+
+          echo "生成分片列表："
+          ls -lh state_upload/
 
       - name: 生成状态 Artifact 名称 (Generate Artifact Name)
         id: artifact-name
@@ -319,12 +320,12 @@ jobs:
           ARTIFACT_NAME="openwrt-state-${{ matrix.device }}-$(date +%Y%m%d%H%M%S)"
           echo "name=$ARTIFACT_NAME" >> $GITHUB_OUTPUT
 
-      - name: 上传编译状态 (Upload Build State Artifact)
+      - name: 上传编译状态分片 (Upload Build State Parts)
         if: steps.compile.outputs.compile_completed == 'false'
         uses: actions/upload-artifact@main
         with:
           name: ${{ steps.artifact-name.outputs.name }}
-          path: /workdir/state_upload/
+          path: /workdir/state_upload/*
           retention-days: 7
 
       - name: 设置输出变量与全局环境变量 (Set Outputs and Env)
@@ -387,7 +388,6 @@ jobs:
           ARTIFACT="${{ needs.compile.outputs.state_artifact_name }}"
           echo "将为设备 $DEVICE 触发新的恢复运行，Artifact: $ARTIFACT"
 
-          # 等待片刻，避免瞬间并发触发过多
           sleep 5
 
           gh workflow run "Build-immortalwrt.yml" \
