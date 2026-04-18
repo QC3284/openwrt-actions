@@ -1,5 +1,5 @@
 # https://github.com/QC3284/openwrt-actions
-# File name: Build-immortalwrt.yml (Fixed: tar file changed error & per-device resume trigger)
+# File name: Build-immortalwrt.yml (Stable & Progress-Aware)
 #
 # Copyright (c) 2026 QC3284 <https://www.xcqcoo.top>
 #
@@ -184,21 +184,21 @@ jobs:
         if: steps.check-resume.outputs.is_resume == 'true'
         working-directory: /workdir
         run: |
-          echo "正在合并分片..."
+          echo "🔄 正在合并分片..."
           cat state/openwrt_state_part_* > openwrt_state.tar.zst
-          echo "合并完成，开始解压..."
+          echo "✅ 合并完成，开始解压..."
           tar -I 'zstd -d' -xf openwrt_state.tar.zst
           rm -rf state openwrt_state.tar.zst
-          echo "恢复完成"
+          echo "🎉 恢复完成"
 
       - name: 恢复后补充 feeds 与下载包 (Post-resume Feeds Update & Download)
         if: steps.check-resume.outputs.is_resume == 'true'
         working-directory: ${{ env.OPENWRT_DIR }}
         run: |
-          echo "重新更新 feeds..."
+          echo "🔄 重新更新 feeds..."
           ./scripts/feeds update -a
           ./scripts/feeds install -a
-          echo "下载缺失的源码包..."
+          echo "⬇️ 下载缺失的源码包..."
           make download -j$(nproc) V=s || true
 
       - name: 拉取源码 (Pull Source Code) [全新编译时执行]
@@ -282,15 +282,36 @@ jobs:
           echo "编译成功完成！"
           echo "compile_completed=true" >> $GITHUB_OUTPUT
 
-      - name: 打包编译状态并分片 (Package & Split Build State) [含容错处理]
+      - name: 打包编译状态并分片 (Package & Split Build State) [醒目进度]
         if: steps.compile.outputs.compile_completed == 'false'
         working-directory: /workdir
         run: |
-          echo "同步文件系统并等待稳定..."
+          echo "=============================================="
+          echo "📦 开始打包编译状态（保留进度，压缩并分片）"
+          echo "=============================================="
+
+          echo "⏳ 同步文件系统并等待稳定..."
           sync
           sleep 2
 
-          echo "正在打包编译目录（快速压缩，容错忽略文件变动）..."
+          # 统计待打包文件总数
+          echo "🔍 正在统计待打包文件数量..."
+          FILE_COUNT=$(find openwrt -type f \
+            -not -path "openwrt/tmp/*" \
+            -not -path "openwrt/dl/*" \
+            -not -path "openwrt/feeds/*" \
+            -not -path "openwrt/.git/*" \
+            -not -path "openwrt/build_dir/target-*/linux-*/*" \
+            -not -path "openwrt/build_dir/target-*/rootfs-*/*" \
+            -not -path "openwrt/logs/*" \
+            -not -path "openwrt/bin/*" \
+            2>/dev/null | wc -l)
+          echo "📊 待打包文件总数: $FILE_COUNT"
+
+          echo "🗜️ 开始打包 (zstd -5) 并显示进度..."
+          START_TIME=$(date +%s)
+
+          # 使用 --checkpoint 每处理 1000 个文件输出一个 '.'
           tar \
             --warning=no-file-changed \
             --ignore-failed-read \
@@ -302,18 +323,36 @@ jobs:
             --exclude='openwrt/build_dir/target-*/rootfs-*' \
             --exclude='openwrt/logs' \
             --exclude='openwrt/bin' \
+            --checkpoint=1000 \
+            --checkpoint-action=echo='#' \
             -I 'zstd -5 -T0' \
             -cf openwrt_state.tar.zst openwrt
 
-          echo "打包完成，压缩包大小："
+          END_TIME=$(date +%s)
+          DURATION=$((END_TIME - START_TIME))
+          echo ""
+          echo "✅ 打包完成，耗时: ${DURATION} 秒"
+
+          # 显示压缩包大小
+          echo "📦 压缩包大小:"
           du -h openwrt_state.tar.zst
 
-          echo "分割压缩包为 1GB 分片..."
+          # 计算压缩率
+          ORIGINAL_SIZE=$(du -sb openwrt 2>/dev/null | cut -f1)
+          COMPRESSED_SIZE=$(stat -c%s openwrt_state.tar.zst)
+          if [ $ORIGINAL_SIZE -gt 0 ]; then
+            RATIO=$(echo "scale=2; $COMPRESSED_SIZE * 100 / $ORIGINAL_SIZE" | bc)
+            echo "📊 压缩率: ${RATIO}% (原始约 $(numfmt --to=iec $ORIGINAL_SIZE))"
+          fi
+
+          echo "✂️ 分割压缩包为 1GB 分片..."
           mkdir -p state_upload
           split -b 1G -d openwrt_state.tar.zst state_upload/openwrt_state_part_
           rm -f openwrt_state.tar.zst
 
-          echo "生成分片列表："
+          PART_COUNT=$(ls state_upload/ | wc -l)
+          echo "🧩 生成分片数量: $PART_COUNT"
+          echo "📋 分片列表:"
           ls -lh state_upload/
 
       - name: 生成状态 Artifact 名称 (Generate Artifact Name)
@@ -331,14 +370,14 @@ jobs:
           path: /workdir/state_upload/*
           retention-days: 7
 
-      - name: 触发恢复编译 (Trigger Resume Workflow) [内嵌触发，保证每个设备独立接力]
+      - name: 触发恢复编译 (Trigger Resume Workflow) [内嵌触发]
         if: steps.compile.outputs.compile_completed == 'false'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           DEVICE="${{ matrix.device }}"
           ARTIFACT="${{ steps.artifact-name.outputs.name }}"
-          echo "设备 $DEVICE 编译未完成，立即触发恢复工作流，Artifact: $ARTIFACT"
+          echo "🔄 设备 $DEVICE 编译未完成，立即触发恢复工作流，Artifact: $ARTIFACT"
 
           gh workflow run "Build-immortalwrt.yml" \
             --repo "${{ github.repository }}" \
@@ -346,7 +385,7 @@ jobs:
             --field resume_device="$DEVICE" \
             --field state_artifact_name="$ARTIFACT"
 
-          echo "恢复任务已触发。"
+          echo "✅ 恢复任务已触发。"
 
       - name: 设置输出变量与全局环境变量 (Set Outputs and Env)
         id: set-output
