@@ -1,5 +1,5 @@
 # https://github.com/QC3284/openwrt-actions
-# File name: Build-immortalwrt.yml (Optimized with Split Upload & Fast Compression)
+# File name: Build-immortalwrt.yml (Fixed: tar file changed error & per-device resume trigger)
 #
 # Copyright (c) 2026 QC3284 <https://www.xcqcoo.top>
 #
@@ -29,7 +29,7 @@ env:
   SOURCE_CODE_URL_FILE: ${{ github.workspace }}/config/immortalwrt-url.txt
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.inputs.resume_device || 'all' }}
+  group: ${{ github.workflow }}-${{ github.event.inputs.resume_device || github.run_id }}
   cancel-in-progress: false
 
 jobs:
@@ -115,9 +115,6 @@ jobs:
       DEVICE_NAME: ${{ matrix.device }}
       CONFIG_FILE: ${{ matrix.config }}
     outputs:
-      needs_resume: ${{ steps.set-output.outputs.needs_resume }}
-      resume_device: ${{ steps.set-output.outputs.resume_device }}
-      state_artifact_name: ${{ steps.set-output.outputs.state_artifact_name }}
       compile_success: ${{ steps.set-output.outputs.compile_success }}
       device: ${{ steps.set-output.outputs.device }}
       config_file: ${{ steps.set-output.outputs.config_file }}
@@ -243,13 +240,12 @@ jobs:
           THREAD_COUNT=$(($(nproc) + 1))
           echo "使用 $THREAD_COUNT 线程编译"
 
-          # 启动后台编译
           make -j$THREAD_COUNT V=s &> make.log &
           MAKE_PID=$!
           echo "编译进程 PID: $MAKE_PID"
 
           SECONDS=0
-          TIMEOUT_SECONDS=$(( 300 * 60 ))   # 300 分钟
+          TIMEOUT_SECONDS=$(( 300 * 60 ))
 
           while kill -0 $MAKE_PID 2>/dev/null; do
             sleep 10
@@ -286,19 +282,26 @@ jobs:
           echo "编译成功完成！"
           echo "compile_completed=true" >> $GITHUB_OUTPUT
 
-      - name: 打包编译状态并分片 (Package & Split Build State)
+      - name: 打包编译状态并分片 (Package & Split Build State) [含容错处理]
         if: steps.compile.outputs.compile_completed == 'false'
         working-directory: /workdir
         run: |
-          echo "正在打包编译目录（快速压缩 zstd -5，排除可重建内容）..."
-          # 排除规则：tmp、dl、feeds、.git 以及内核编译/rootfs 中间文件
+          echo "同步文件系统并等待稳定..."
+          sync
+          sleep 2
+
+          echo "正在打包编译目录（快速压缩，容错忽略文件变动）..."
           tar \
+            --warning=no-file-changed \
+            --ignore-failed-read \
             --exclude='openwrt/tmp' \
             --exclude='openwrt/dl' \
             --exclude='openwrt/feeds' \
             --exclude='openwrt/.git' \
             --exclude='openwrt/build_dir/target-*/linux-*' \
             --exclude='openwrt/build_dir/target-*/rootfs-*' \
+            --exclude='openwrt/logs' \
+            --exclude='openwrt/bin' \
             -I 'zstd -5 -T0' \
             -cf openwrt_state.tar.zst openwrt
 
@@ -328,6 +331,23 @@ jobs:
           path: /workdir/state_upload/*
           retention-days: 7
 
+      - name: 触发恢复编译 (Trigger Resume Workflow) [内嵌触发，保证每个设备独立接力]
+        if: steps.compile.outputs.compile_completed == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          DEVICE="${{ matrix.device }}"
+          ARTIFACT="${{ steps.artifact-name.outputs.name }}"
+          echo "设备 $DEVICE 编译未完成，立即触发恢复工作流，Artifact: $ARTIFACT"
+
+          gh workflow run "Build-immortalwrt.yml" \
+            --repo "${{ github.repository }}" \
+            --ref "${{ github.ref }}" \
+            --field resume_device="$DEVICE" \
+            --field state_artifact_name="$ARTIFACT"
+
+          echo "恢复任务已触发。"
+
       - name: 设置输出变量与全局环境变量 (Set Outputs and Env)
         id: set-output
         run: |
@@ -343,14 +363,8 @@ jobs:
           echo "target_dir=$TARGET_DIR" >> $GITHUB_OUTPUT
 
           if [ "${{ steps.compile.outputs.compile_completed }}" = "false" ]; then
-            echo "needs_resume=true" >> $GITHUB_OUTPUT
-            echo "resume_device=${{ matrix.device }}" >> $GITHUB_OUTPUT
-            echo "state_artifact_name=${{ steps.artifact-name.outputs.name }}" >> $GITHUB_OUTPUT
             echo "compile_success=false" >> $GITHUB_OUTPUT
           else
-            echo "needs_resume=false" >> $GITHUB_OUTPUT
-            echo "resume_device=" >> $GITHUB_OUTPUT
-            echo "state_artifact_name=" >> $GITHUB_OUTPUT
             echo "compile_success=true" >> $GITHUB_OUTPUT
           fi
 
@@ -374,29 +388,6 @@ jobs:
           name: openwrt-firmware-${{ matrix.device }}
           path: ${{ env.OPENWRT_DIR }}/${{ env.TARGET_DIR }}/
           retention-days: 30
-
-  trigger-resume:
-    needs: compile
-    if: always() && needs.compile.result == 'success' && needs.compile.outputs.needs_resume == 'true'
-    runs-on: ubuntu-24.04
-    steps:
-      - name: 触发恢复编译 (Trigger Resume Workflow)
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          DEVICE="${{ needs.compile.outputs.resume_device }}"
-          ARTIFACT="${{ needs.compile.outputs.state_artifact_name }}"
-          echo "将为设备 $DEVICE 触发新的恢复运行，Artifact: $ARTIFACT"
-
-          sleep 5
-
-          gh workflow run "Build-immortalwrt.yml" \
-            --repo "${{ github.repository }}" \
-            --ref "${{ github.ref }}" \
-            --field resume_device="$DEVICE" \
-            --field state_artifact_name="$ARTIFACT"
-
-          echo "恢复任务已触发。"
 
   release:
     needs: compile
