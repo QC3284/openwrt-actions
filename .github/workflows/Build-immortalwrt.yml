@@ -1,5 +1,5 @@
 # https://github.com/QC3284/openwrt-actions
-# File name: Build-immortalwrt.yml (Stable & Progress-Aware)
+# File name: Build-immortalwrt.yml (Simplified: One-shot build, no resume)
 #
 # Copyright (c) 2026 QC3284 <https://www.xcqcoo.top>
 #
@@ -13,24 +13,11 @@ on:
     - cron: '0 3 * * 3,6'
   repository_dispatch:
   workflow_dispatch:
-    inputs:
-      resume_device:
-        description: '要恢复编译的设备名（留空表示全新编译）'
-        required: false
-        type: string
-      state_artifact_name:
-        description: '保存状态的 Artifact 名称（恢复时使用）'
-        required: false
-        type: string
 
 env:
   TZ: Asia/Shanghai
   OPENWRT_DIR: /workdir/openwrt
   SOURCE_CODE_URL_FILE: ${{ github.workspace }}/config/immortalwrt-url.txt
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.event.inputs.resume_device || github.run_id }}
-  cancel-in-progress: false
 
 jobs:
   prepare:
@@ -126,18 +113,6 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: 判断是否为恢复运行 (Check Resume Mode)
-        id: check-resume
-        run: |
-          if [ -n "${{ github.event.inputs.resume_device }}" ] && [ "${{ github.event.inputs.resume_device }}" == "${{ matrix.device }}" ]; then
-            echo "is_resume=true" >> $GITHUB_OUTPUT
-            echo "state_artifact_name=${{ github.event.inputs.state_artifact_name }}" >> $GITHUB_OUTPUT
-            echo "::notice::以恢复模式运行，设备: ${{ matrix.device }}"
-          else
-            echo "is_resume=false" >> $GITHUB_OUTPUT
-            echo "::notice::以全新模式运行，设备: ${{ matrix.device }}"
-          fi
-
       - name: 设置系统时区 (Set System Timezone)
         run: |
           sudo timedatectl set-timezone "$TZ"
@@ -173,36 +148,7 @@ jobs:
             scons squashfs-tools texinfo uglifyjs upx-ucl vim xmlto xxd zstd zstd
           pip install requests tqdm
 
-      - name: 下载并恢复编译状态 (Download and Restore Build State)
-        if: steps.check-resume.outputs.is_resume == 'true'
-        uses: actions/download-artifact@main
-        with:
-          name: ${{ steps.check-resume.outputs.state_artifact_name }}
-          path: /workdir/state/
-
-      - name: 合并分片并解压编译状态 (Merge Parts and Extract Build State)
-        if: steps.check-resume.outputs.is_resume == 'true'
-        working-directory: /workdir
-        run: |
-          echo "🔄 正在合并分片..."
-          cat state/openwrt_state_part_* > openwrt_state.tar.zst
-          echo "✅ 合并完成，开始解压..."
-          tar -I 'zstd -d' -xf openwrt_state.tar.zst
-          rm -rf state openwrt_state.tar.zst
-          echo "🎉 恢复完成"
-
-      - name: 恢复后补充 feeds 与下载包 (Post-resume Feeds Update & Download)
-        if: steps.check-resume.outputs.is_resume == 'true'
-        working-directory: ${{ env.OPENWRT_DIR }}
-        run: |
-          echo "🔄 重新更新 feeds..."
-          ./scripts/feeds update -a
-          ./scripts/feeds install -a
-          echo "⬇️ 下载缺失的源码包..."
-          make download -j$(nproc) V=s || true
-
-      - name: 拉取源码 (Pull Source Code) [全新编译时执行]
-        if: steps.check-resume.outputs.is_resume != 'true'
+      - name: 拉取源码 (Pull Source Code)
         working-directory: /workdir
         run: |
           git clone $(cat ${{ env.SOURCE_CODE_URL_FILE }}) openwrt
@@ -211,67 +157,33 @@ jobs:
         run: |
           ln -sf ${{ env.OPENWRT_DIR }} ${{ github.workspace }}/openwrt
 
-      - name: 更新源码 (Update Source Code) [全新编译时执行]
-        if: steps.check-resume.outputs.is_resume != 'true'
+      - name: 更新源码 (Update Source Code)
         working-directory: ${{ env.OPENWRT_DIR }}
         run: |
           git fetch --all
           git reset --hard origin/HEAD
 
-      - name: 更新并安装Feeds [全新编译时执行]
-        if: steps.check-resume.outputs.is_resume != 'true'
+      - name: 更新并安装Feeds
         working-directory: ${{ env.OPENWRT_DIR }}
         run: |
           ./scripts/feeds update -a
           ./scripts/feeds install -a
 
-      - name: 准备配置文件 [全新编译时执行]
-        if: steps.check-resume.outputs.is_resume != 'true'
+      - name: 准备配置文件
         working-directory: ${{ env.OPENWRT_DIR }}
         run: |
           cp "${{ env.CONFIG_FILE }}" .config
           bash ${{ github.workspace }}/script/x-wrt-make-001.sh
 
-      - name: 编译固件并监控超时 (Compile with Timeout Monitoring)
+      - name: 编译固件
         id: compile
         working-directory: ${{ env.OPENWRT_DIR }}
-        timeout-minutes: 350
         run: |
           THREAD_COUNT=$(($(nproc) + 1))
           echo "使用 $THREAD_COUNT 线程编译"
 
-          make -j$THREAD_COUNT V=s &> make.log &
-          MAKE_PID=$!
-          echo "编译进程 PID: $MAKE_PID"
-
-          SECONDS=0
-          TIMEOUT_SECONDS=$(( 300 * 60 ))
-
-          while kill -0 $MAKE_PID 2>/dev/null; do
-            sleep 10
-            if [ $SECONDS -gt $TIMEOUT_SECONDS ]; then
-              echo "::warning::编译已运行 ${SECONDS} 秒，接近任务时间上限，主动停止以保存进度。"
-              pkill -P $MAKE_PID 2>/dev/null || true
-              kill -TERM $MAKE_PID 2>/dev/null || true
-              for i in {1..30}; do
-                if ! kill -0 $MAKE_PID 2>/dev/null; then
-                  break
-                fi
-                sleep 1
-              done
-              if kill -0 $MAKE_PID 2>/dev/null; then
-                echo "进程未响应，强制终止"
-                pkill -KILL -P $MAKE_PID 2>/dev/null || true
-                kill -KILL $MAKE_PID 2>/dev/null || true
-              fi
-              wait $MAKE_PID 2>/dev/null || true
-              echo "compile_completed=false" >> $GITHUB_OUTPUT
-              exit 0
-            fi
-          done
-
-          wait $MAKE_PID
-          MAKE_EXIT_CODE=$?
+          make -j$THREAD_COUNT V=s 2>&1 | tee make.log
+          MAKE_EXIT_CODE=${PIPESTATUS[0]}
 
           if [ $MAKE_EXIT_CODE -ne 0 ]; then
             echo "编译失败，退出码: $MAKE_EXIT_CODE"
@@ -281,111 +193,6 @@ jobs:
 
           echo "编译成功完成！"
           echo "compile_completed=true" >> $GITHUB_OUTPUT
-
-      - name: 打包编译状态并分片 (Package & Split Build State) [醒目进度]
-        if: steps.compile.outputs.compile_completed == 'false'
-        working-directory: /workdir
-        run: |
-          echo "=============================================="
-          echo "📦 开始打包编译状态（保留进度，压缩并分片）"
-          echo "=============================================="
-
-          echo "⏳ 同步文件系统并等待稳定..."
-          sync
-          sleep 2
-
-          # 统计待打包文件总数
-          echo "🔍 正在统计待打包文件数量..."
-          FILE_COUNT=$(find openwrt -type f \
-            -not -path "openwrt/tmp/*" \
-            -not -path "openwrt/dl/*" \
-            -not -path "openwrt/feeds/*" \
-            -not -path "openwrt/.git/*" \
-            -not -path "openwrt/build_dir/target-*/linux-*/*" \
-            -not -path "openwrt/build_dir/target-*/rootfs-*/*" \
-            -not -path "openwrt/logs/*" \
-            -not -path "openwrt/bin/*" \
-            2>/dev/null | wc -l)
-          echo "📊 待打包文件总数: $FILE_COUNT"
-
-          echo "🗜️ 开始打包 (zstd -5) 并显示进度..."
-          START_TIME=$(date +%s)
-
-          # 使用 --checkpoint 每处理 1000 个文件输出一个 '.'
-          tar \
-            --warning=no-file-changed \
-            --ignore-failed-read \
-            --exclude='openwrt/tmp' \
-            --exclude='openwrt/dl' \
-            --exclude='openwrt/feeds' \
-            --exclude='openwrt/.git' \
-            --exclude='openwrt/build_dir/target-*/linux-*' \
-            --exclude='openwrt/build_dir/target-*/rootfs-*' \
-            --exclude='openwrt/logs' \
-            --exclude='openwrt/bin' \
-            --checkpoint=1000 \
-            --checkpoint-action=echo='#' \
-            -I 'zstd -5 -T0' \
-            -cf openwrt_state.tar.zst openwrt
-
-          END_TIME=$(date +%s)
-          DURATION=$((END_TIME - START_TIME))
-          echo ""
-          echo "✅ 打包完成，耗时: ${DURATION} 秒"
-
-          # 显示压缩包大小
-          echo "📦 压缩包大小:"
-          du -h openwrt_state.tar.zst
-
-          # 计算压缩率
-          ORIGINAL_SIZE=$(du -sb openwrt 2>/dev/null | cut -f1)
-          COMPRESSED_SIZE=$(stat -c%s openwrt_state.tar.zst)
-          if [ $ORIGINAL_SIZE -gt 0 ]; then
-            RATIO=$(echo "scale=2; $COMPRESSED_SIZE * 100 / $ORIGINAL_SIZE" | bc)
-            echo "📊 压缩率: ${RATIO}% (原始约 $(numfmt --to=iec $ORIGINAL_SIZE))"
-          fi
-
-          echo "✂️ 分割压缩包为 1GB 分片..."
-          mkdir -p state_upload
-          split -b 1G -d openwrt_state.tar.zst state_upload/openwrt_state_part_
-          rm -f openwrt_state.tar.zst
-
-          PART_COUNT=$(ls state_upload/ | wc -l)
-          echo "🧩 生成分片数量: $PART_COUNT"
-          echo "📋 分片列表:"
-          ls -lh state_upload/
-
-      - name: 生成状态 Artifact 名称 (Generate Artifact Name)
-        id: artifact-name
-        if: steps.compile.outputs.compile_completed == 'false'
-        run: |
-          ARTIFACT_NAME="openwrt-state-${{ matrix.device }}-$(date +%Y%m%d%H%M%S)"
-          echo "name=$ARTIFACT_NAME" >> $GITHUB_OUTPUT
-
-      - name: 上传编译状态分片 (Upload Build State Parts)
-        if: steps.compile.outputs.compile_completed == 'false'
-        uses: actions/upload-artifact@main
-        with:
-          name: ${{ steps.artifact-name.outputs.name }}
-          path: /workdir/state_upload/*
-          retention-days: 7
-
-      - name: 触发恢复编译 (Trigger Resume Workflow) [内嵌触发]
-        if: steps.compile.outputs.compile_completed == 'false'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          DEVICE="${{ matrix.device }}"
-          ARTIFACT="${{ steps.artifact-name.outputs.name }}"
-          echo "🔄 设备 $DEVICE 编译未完成，立即触发恢复工作流，Artifact: $ARTIFACT"
-
-          gh workflow run "Build-immortalwrt.yml" \
-            --repo "${{ github.repository }}" \
-            --ref "${{ github.ref }}" \
-            --field resume_device="$DEVICE" \
-            --field state_artifact_name="$ARTIFACT"
-
-          echo "✅ 恢复任务已触发。"
 
       - name: 设置输出变量与全局环境变量 (Set Outputs and Env)
         id: set-output
@@ -401,13 +208,13 @@ jobs:
           echo "build_datetime=$BUILD_DATETIME" >> $GITHUB_OUTPUT
           echo "target_dir=$TARGET_DIR" >> $GITHUB_OUTPUT
 
-          if [ "${{ steps.compile.outputs.compile_completed }}" = "false" ]; then
-            echo "compile_success=false" >> $GITHUB_OUTPUT
-          else
+          if [ "${{ steps.compile.outputs.compile_completed }}" = "true" ]; then
             echo "compile_success=true" >> $GITHUB_OUTPUT
+          else
+            echo "compile_success=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: 压缩完整 bin 目录并整理固件 (Package Artifacts) [编译成功时]
+      - name: 压缩完整 bin 目录并整理固件 (Package Artifacts)
         if: steps.compile.outputs.compile_completed == 'true'
         working-directory: ${{ env.OPENWRT_DIR }}
         run: |
@@ -420,7 +227,7 @@ jobs:
           echo "固件文件列表:"
           ls -la *.bin *.img *.trx *.chk *.sys *.rom *.fit *.itb *.7z *.log 2>/dev/null || true
 
-      - name: 上传固件 Artifact (Upload Firmware Artifact) [编译成功时]
+      - name: 上传固件 Artifact (Upload Firmware Artifact)
         if: steps.compile.outputs.compile_completed == 'true'
         uses: actions/upload-artifact@main
         with:
