@@ -1,5 +1,5 @@
 # https://github.com/QC3284/openwrt-actions
-# File name: Build-immortalwrt.yml (Simplified: One-shot build, no resume)
+# File name: Build-immortalwrt.yml (Isolated per-device release, no resume)
 #
 # Copyright (c) 2026 QC3284 <https://www.xcqcoo.top>
 #
@@ -101,12 +101,6 @@ jobs:
     env:
       DEVICE_NAME: ${{ matrix.device }}
       CONFIG_FILE: ${{ matrix.config }}
-    outputs:
-      compile_success: ${{ steps.set-output.outputs.compile_success }}
-      device: ${{ steps.set-output.outputs.device }}
-      config_file: ${{ steps.set-output.outputs.config_file }}
-      build_datetime: ${{ steps.set-output.outputs.build_datetime }}
-      target_dir: ${{ steps.set-output.outputs.target_dir }}
     steps:
       - name: 检查仓库 (Checkout Repository)
         uses: actions/checkout@main
@@ -194,30 +188,11 @@ jobs:
           echo "编译成功完成！"
           echo "compile_completed=true" >> $GITHUB_OUTPUT
 
-      - name: 设置输出变量与全局环境变量 (Set Outputs and Env)
-        id: set-output
-        run: |
-          TARGET_DIR="bin/targets/mediatek/filogic"
-          BUILD_DATETIME=$(date +"%Y%m%d%H%M")
-
-          echo "TARGET_DIR=$TARGET_DIR" >> $GITHUB_ENV
-          echo "BUILD_DATETIME=$BUILD_DATETIME" >> $GITHUB_ENV
-
-          echo "device=${{ matrix.device }}" >> $GITHUB_OUTPUT
-          echo "config_file=${{ matrix.config }}" >> $GITHUB_OUTPUT
-          echo "build_datetime=$BUILD_DATETIME" >> $GITHUB_OUTPUT
-          echo "target_dir=$TARGET_DIR" >> $GITHUB_OUTPUT
-
-          if [ "${{ steps.compile.outputs.compile_completed }}" = "true" ]; then
-            echo "compile_success=true" >> $GITHUB_OUTPUT
-          else
-            echo "compile_success=false" >> $GITHUB_OUTPUT
-          fi
-
-      - name: 压缩完整 bin 目录并整理固件 (Package Artifacts)
+      - name: 压缩完整 bin 目录并整理固件
         if: steps.compile.outputs.compile_completed == 'true'
         working-directory: ${{ env.OPENWRT_DIR }}
         run: |
+          TARGET_DIR="bin/targets/mediatek/filogic"
           7z a -mx=9 -mmt=$(nproc) bin.7z bin/
           mkdir -p "$TARGET_DIR"
           mv bin.7z "$TARGET_DIR/"
@@ -226,46 +201,33 @@ jobs:
           rm -rf packages
           echo "固件文件列表:"
           ls -la *.bin *.img *.trx *.chk *.sys *.rom *.fit *.itb *.7z *.log 2>/dev/null || true
+          echo "TARGET_DIR=$TARGET_DIR" >> $GITHUB_ENV
 
       - name: 上传固件 Artifact (Upload Firmware Artifact)
         if: steps.compile.outputs.compile_completed == 'true'
         uses: actions/upload-artifact@main
         with:
           name: openwrt-firmware-${{ matrix.device }}
-          path: ${{ env.OPENWRT_DIR }}/${{ env.TARGET_DIR }}/
+          path: ${{ env.OPENWRT_DIR }}/bin/targets/mediatek/filogic/
           retention-days: 30
 
-  release:
-    needs: compile
-    if: needs.compile.result == 'success' && needs.compile.outputs.compile_success == 'true'
-    runs-on: ubuntu-24.04
-    steps:
-      - name: 检查仓库 (Checkout Repository)
-        uses: actions/checkout@main
-        with:
-          fetch-depth: 1
-
-      - name: 下载固件 Artifact (Download Firmware Artifact)
-        uses: actions/download-artifact@main
-        with:
-          name: openwrt-firmware-${{ needs.compile.outputs.device }}
-          path: firmware/
-
-      - name: 生成 Release 描述与唯一标签 (Generate Release Description & Unique Tag)
-        id: tag
+      - name: 生成 Release 信息
+        if: steps.compile.outputs.compile_completed == 'true'
+        id: release_info
         run: |
-          DEVICE="${{ needs.compile.outputs.device }}"
-          BUILD_DATETIME="${{ needs.compile.outputs.build_datetime }}"
-          RELEASE_TAG="${DEVICE}-${BUILD_DATETIME}-${{ github.run_id }}"
+          BUILD_DATETIME=$(date +"%Y%m%d%H%M")
+          echo "BUILD_DATETIME=$BUILD_DATETIME" >> $GITHUB_ENV
+
+          RELEASE_TAG="${{ matrix.device }}-${BUILD_DATETIME}-${{ github.run_id }}"
           echo "release_tag=$RELEASE_TAG" >> $GITHUB_OUTPUT
 
           cat > release.txt <<EOF
-          ImmortalWRT Build for $DEVICE
+          ImmortalWRT Build for ${{ matrix.device }}
           ==========================================
           Build Date: $(date)
-          Device: $DEVICE
+          Device: ${{ matrix.device }}
           Target: mediatek/filogic
-          Config File: $(basename "${{ needs.compile.outputs.config_file }}")
+          Config File: $(basename "${{ env.CONFIG_FILE }}")
           Source Code: $(cat ${{ env.SOURCE_CODE_URL_FILE }})
 
           Included Files:
@@ -275,13 +237,14 @@ jobs:
           EOF
 
       - name: 发布固件 (Create Release)
+        if: steps.compile.outputs.compile_completed == 'true'
         uses: softprops/action-gh-release@master
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ steps.tag.outputs.release_tag }}
-          name: "ImmortalWRT ${{ needs.compile.outputs.device }} - ${{ needs.compile.outputs.build_datetime }}"
+          tag_name: ${{ steps.release_info.outputs.release_tag }}
+          name: "ImmortalWRT ${{ matrix.device }} - ${{ env.BUILD_DATETIME }}"
           body_path: release.txt
-          files: firmware/*
+          files: ${{ env.OPENWRT_DIR }}/bin/targets/mediatek/filogic/*
           draft: false
           prerelease: false
