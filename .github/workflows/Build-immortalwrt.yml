@@ -1,5 +1,5 @@
 # https://github.com/QC3284/openwrt-actions
-# File name: Build-immortalwrt.yml (Isolated per-device release, no resume)
+# File name: Build-immortalwrt.yml (Isolated per-device release with failure handling)
 #
 # Copyright (c) 2026 QC3284 <https://www.xcqcoo.top>
 #
@@ -169,25 +169,71 @@ jobs:
           cp "${{ env.CONFIG_FILE }}" .config
           bash ${{ github.workspace }}/script/x-wrt-make-001.sh
 
-      - name: 编译固件
+      - name: 编译固件（捕获退出码，不立刻终止）
         id: compile
         working-directory: ${{ env.OPENWRT_DIR }}
         run: |
           THREAD_COUNT=$(($(nproc) + 1))
           echo "使用 $THREAD_COUNT 线程编译"
 
+          # 记录退出码，不中断脚本以便后续处理
           make -j$THREAD_COUNT V=s 2>&1 | tee make.log
-          MAKE_EXIT_CODE=${PIPESTATUS[0]}
+          EXIT_CODE=${PIPESTATUS[0]}
 
-          if [ $MAKE_EXIT_CODE -ne 0 ]; then
-            echo "编译失败，退出码: $MAKE_EXIT_CODE"
+          if [ $EXIT_CODE -eq 0 ]; then
+            echo "编译成功完成！"
+            echo "compile_completed=true" >> $GITHUB_OUTPUT
+          else
+            echo "编译失败，退出码: $EXIT_CODE"
             tail -100 make.log
-            exit 1
+            echo "compile_completed=false" >> $GITHUB_OUTPUT
+            # 注意：不 exit 1，让工作流继续执行失败处理步骤
           fi
 
-          echo "编译成功完成！"
-          echo "compile_completed=true" >> $GITHUB_OUTPUT
+      # ---------- 编译失败处理 ----------
+      - name: 上传失败日志 (Upload Failure Log)
+        if: steps.compile.outputs.compile_completed == 'false'
+        uses: actions/upload-artifact@main
+        with:
+          name: failed-build-log-${{ matrix.device }}-${{ github.run_id }}
+          path: ${{ env.OPENWRT_DIR }}/make.log
+          retention-days: 7
 
+      - name: 生成失败 Release 信息
+        if: steps.compile.outputs.compile_completed == 'false'
+        id: failed_release
+        run: |
+          BUILD_DATETIME=$(date +"%Y%m%d%H%M")
+          RELEASE_TAG="${{ matrix.device }}-failed-${BUILD_DATETIME}-${{ github.run_id }}"
+          echo "release_tag=$RELEASE_TAG" >> $GITHUB_OUTPUT
+
+          cat > release_failed.txt <<EOF
+          ⚠️ 编译失败 - ${{ matrix.device }}
+          ==========================================
+          Build Date: $(date)
+          Device: ${{ matrix.device }}
+          Target: mediatek/filogic
+          Config File: $(basename "${{ env.CONFIG_FILE }}")
+          Source Code: $(cat ${{ env.SOURCE_CODE_URL_FILE }})
+
+          编译未能成功完成，请查看附件中的 make.log 排查错误。
+          日志文件可通过下方 Artifacts 或 Release 附件获取。
+          EOF
+
+      - name: 发布失败 Release (Create Failure Release - Draft)
+        if: steps.compile.outputs.compile_completed == 'false'
+        uses: softprops/action-gh-release@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.failed_release.outputs.release_tag }}
+          name: "[编译失败] ${{ matrix.device }} - ${{ env.BUILD_DATETIME }}"
+          body_path: release_failed.txt
+          files: ${{ env.OPENWRT_DIR }}/make.log
+          draft: true
+          prerelease: true
+
+      # ---------- 编译成功处理 ----------
       - name: 压缩完整 bin 目录并整理固件
         if: steps.compile.outputs.compile_completed == 'true'
         working-directory: ${{ env.OPENWRT_DIR }}
@@ -211,9 +257,9 @@ jobs:
           path: ${{ env.OPENWRT_DIR }}/bin/targets/mediatek/filogic/
           retention-days: 30
 
-      - name: 生成 Release 信息
+      - name: 生成成功 Release 信息
         if: steps.compile.outputs.compile_completed == 'true'
-        id: release_info
+        id: success_release
         run: |
           BUILD_DATETIME=$(date +"%Y%m%d%H%M")
           echo "BUILD_DATETIME=$BUILD_DATETIME" >> $GITHUB_ENV
@@ -221,7 +267,7 @@ jobs:
           RELEASE_TAG="${{ matrix.device }}-${BUILD_DATETIME}-${{ github.run_id }}"
           echo "release_tag=$RELEASE_TAG" >> $GITHUB_OUTPUT
 
-          cat > release.txt <<EOF
+          cat > release_success.txt <<EOF
           ImmortalWRT Build for ${{ matrix.device }}
           ==========================================
           Build Date: $(date)
@@ -236,15 +282,15 @@ jobs:
           - Compilation log (make.log)
           EOF
 
-      - name: 发布固件 (Create Release)
+      - name: 发布成功 Release (Create Release)
         if: steps.compile.outputs.compile_completed == 'true'
         uses: softprops/action-gh-release@master
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ steps.release_info.outputs.release_tag }}
+          tag_name: ${{ steps.success_release.outputs.release_tag }}
           name: "ImmortalWRT ${{ matrix.device }} - ${{ env.BUILD_DATETIME }}"
-          body_path: release.txt
+          body_path: release_success.txt
           files: ${{ env.OPENWRT_DIR }}/bin/targets/mediatek/filogic/*
           draft: false
           prerelease: false
