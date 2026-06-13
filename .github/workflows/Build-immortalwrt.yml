@@ -167,6 +167,7 @@ jobs:
         working-directory: ${{ env.OPENWRT_DIR }}
         run: |
           cp "${{ env.CONFIG_FILE }}" .config
+          make defconfig
           bash ${{ github.workspace }}/script/x-wrt-make-001.sh
 
       - name: 编译固件（捕获退出码，不立刻终止）
