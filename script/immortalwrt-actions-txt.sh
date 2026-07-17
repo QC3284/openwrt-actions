@@ -3,6 +3,7 @@
 #作者：QC3284@github.com(https://github.com/QC3284)
 #本仓库地址：https://github.com/QC3284/openwrt-actions
 #最后更新时间：2026.3.29
+# 用途：生成 immortalwrt 编译产物的 Release 说明文件 (release.txt)
 echo "自动编译 (Automatic compilation)" >> release.txt
 echo "使用源码 (Use source code)：" >> release.txt
 echo "[immortalwrt-mt7981-rebase](https://github.com/chasey-dev/immortalwrt-mt798x-rebase)" >> release.txt

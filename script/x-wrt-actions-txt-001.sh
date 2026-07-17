@@ -3,6 +3,7 @@
 #作者：QC3284@github.com(https://github.com/QC3284)
 #本仓库地址：https://github.com/QC3284/openwrt-actions
 #最后更新时间：2025.5.24
+# 用途：生成 X-Wrt 编译产物的 Release 说明文件 (release.txt)，包含源码标签、默认账号等信息
 echo "自动编译 (Automatic compilation)" >> release.txt
 echo "使用源码 (Use source code)：" >> release.txt
 echo "[x-wrt](https://github.com/x-wrt/x-wrt)" >> release.txt

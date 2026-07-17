@@ -1,2 +1,5 @@
+# 启用编译的设备列表 (由 Build-immortalwrt.yml 读取生成编译矩阵)
+# 每行一个设备名，需与 config/immortalwrt-mt7981/ 下配置文件名中的设备段一致
+# 以 # 开头的行为注释，会被忽略
 glinet_gl-mt3000
 konka_komi-a31

@@ -1,2 +1,73 @@
 # openwrt-actions
-利用 Github Actions 编译openwrt,immortalwrt等
+
+利用 GitHub Actions 自动编译 OpenWrt / ImmortalWrt / LEDE / X-Wrt 固件。
+
+> [!WARNING]
+> 目前仅 **ImmortalWrt** 工作流处于积极维护中，其余工作流（LEDE / OpenWrt / X-Wrt）已停止更新，仍可运行但可能存在未知问题，请谨慎使用。
+
+## 工作流
+
+| 工作流 | 源码 | 状态 | 说明 |
+| --- | --- | --- | --- |
+| `Build-immortalwrt.yml` | [immortalwrt-mt798x-rebase](https://github.com/chasey-dev/immortalwrt-mt798x-rebase) | ✅ 维护中 | 多设备矩阵并行编译 (MT7981/filogic)，含失败处理 |
+| `Build-lede.yml` | [coolsnowwolf/lede](https://github.com/coolsnowwolf/lede) | ⛔ 停止更新 | 编译 LEDE |
+| `Build-openwrt.yml` | [openwrt/openwrt](https://git.openwrt.org/openwrt/openwrt.git) | ⛔ 停止更新 | 编译官方 OpenWrt (main 分支) |
+| `Build-X-wrt.yml` | [x-wrt/x-wrt](https://github.com/x-wrt/x-wrt) | ⛔ 停止更新 | 按指定 tag 编译 X-Wrt |
+
+所有工作流均支持定时触发（每周三、六 03:00 北京时间）、手动触发 (workflow_dispatch) 和 repository_dispatch。
+
+## ImmortalWrt 编译流程
+
+1. **prepare**：读取 `config/immortalwrt-mt7981-enable-configs.txt` 中启用的设备，在 `config/immortalwrt-mt7981/` 中按文件名时间戳自动选取每个设备最新的 `.config`，生成编译矩阵
+2. **compile**（矩阵并行，每设备独立 job）：
+   - 拉取源码后，通过 `script/immortalwrt-switch-branch.sh` 按 `config/immortalwrt-device-branch.txt` 切换设备对应分支（未配置则默认 `25.12`）
+   - 执行 DIY 脚本注入第三方插件，更新并安装 feeds
+   - 先 `make -j$(nproc+1)` 编译，失败自动回退 `make -j1 V=s` 定位错误
+   - **成功**：打包 bin 目录 (bin.7z)，上传 Artifact 并发布 Release
+   - **失败**：提取关键错误生成 `error_report.md`（输出到 Step Summary），上传日志并创建草稿 Release
+
+## 目录结构
+
+```
+├── .github/workflows/        # 各源码的编译工作流
+├── config/
+│   ├── immortalwrt-mt7981/                    # 各设备编译配置 (按 设备名-时间戳 命名)
+│   ├── immortalwrt-mt7981-enable-configs.txt  # 启用编译的设备列表
+│   ├── immortalwrt-device-branch.txt          # 机型与源码分支对应表
+│   ├── *-url.txt                              # 各源码仓库地址 (含分支参数)
+│   ├── *-banner*.txt                          # 自定义登录 banner
+│   ├── x-wrt-config-tag.txt                   # X-Wrt 编译使用的 tag
+│   └── old_configs/                           # 历史配置存档
+└── script/
+    ├── immortalwrt-actions-diy1.sh   # feeds update 前：克隆第三方插件
+    ├── immortalwrt-actions-diy2.sh   # feeds update 后：替换 OpenClash
+    ├── immortalwrt-switch-branch.sh  # 按机型切换源码分支
+    ├── *-ip.sh                       # 修改默认管理 IP (192.168.5.1)
+    ├── *-txt*.sh / *-rl.sh           # 生成 Release 说明
+    ├── x-wrt-git-001.sh              # 替换 coremark 包
+    ├── x-wrt-make-001.sh             # 预下载依赖并清理残缺包
+    └── gitcj.py + giturl.txt         # 批量克隆第三方 luci 插件
+```
+
+## 常用操作
+
+### 新增/更新设备配置 (ImmortalWrt)
+
+1. 将 `.config` 命名为 `immortalwrt-actions-mt7981-<设备名>-<YYYYMMDDHHMMSS>.config` 放入 `config/immortalwrt-mt7981/`
+2. 在 `config/immortalwrt-mt7981-enable-configs.txt` 中添加设备名（每行一个，`#` 为注释）
+3. 如需非默认分支，在 `config/immortalwrt-device-branch.txt` 中添加 `<设备名> <分支名>`
+
+工作流会自动选取每个设备时间戳最新的配置文件。
+
+### 停用某个设备
+
+在 `config/immortalwrt-mt7981-enable-configs.txt` 中删除或注释对应行即可，无需删除配置文件。
+
+## 固件默认信息
+
+- ImmortalWrt 账号/密码：`root` / 无密码
+- X-Wrt 账号/密码：`admin/admin`（SSH：`root/admin`）
+
+## 许可证
+
+[GPL-3.0](LICENSE)
