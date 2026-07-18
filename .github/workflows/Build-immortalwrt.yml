@@ -33,8 +33,8 @@ jobs:
       - name: 生成编译矩阵 (Generate Build Matrix)
         id: set-matrix
         run: |
-          ENABLE_FILE="${{ github.workspace }}/config/immortalwrt-mt7981-enable-configs.txt"
-          CONFIG_DIR="${{ github.workspace }}/config/immortalwrt-mt7981"
+          ENABLE_FILE="${{ github.workspace }}/config/immortalwrt-mt798x-enable-configs.txt"
+          CONFIG_DIR="${{ github.workspace }}/config/immortalwrt-mt798x"
 
           if [ ! -f "$ENABLE_FILE" ]; then
             echo "::error::启用配置文件不存在: $ENABLE_FILE"
@@ -50,28 +50,31 @@ jobs:
 
           declare -A LATEST_CONFIGS
           declare -A LATEST_DATETIME
+          declare -A LATEST_CHIP
           while IFS= read -r -d '' file; do
             filename=$(basename "$file")
-            if [[ "$filename" =~ ^immortalwrt-actions-mt7981-(.+)-([0-9]{14})\.config$ ]]; then
-              device="${BASH_REMATCH[1]}"
-              datetime="${BASH_REMATCH[2]}"
+            if [[ "$filename" =~ ^immortalwrt-actions-([a-z0-9]+)-(.+)-([0-9]{14})\.config$ ]]; then
+              chip="${BASH_REMATCH[1]}"
+              device="${BASH_REMATCH[2]}"
+              datetime="${BASH_REMATCH[3]}"
               if [[ " ${ENABLED_DEVICES[*]} " == *" $device "* ]]; then
                 if [[ -z "${LATEST_CONFIGS[$device]}" ]] || [[ "$datetime" > "${LATEST_DATETIME[$device]}" ]]; then
                   LATEST_CONFIGS["$device"]="$file"
                   LATEST_DATETIME["$device"]="$datetime"
+                  LATEST_CHIP["$device"]="$chip"
                 fi
               fi
             fi
-          done < <(find "$CONFIG_DIR" -maxdepth 1 -type f -name "immortalwrt-actions-mt7981-*.config" -print0)
+          done < <(find "$CONFIG_DIR" -maxdepth 1 -type f -name "immortalwrt-actions-*.config" -print0)
 
           for dev in "${!LATEST_CONFIGS[@]}"; do
-            echo "设备 [$dev] 使用配置: ${LATEST_CONFIGS[$dev]} (日期: ${LATEST_DATETIME[$dev]})"
+            echo "设备 [$dev] (芯片: ${LATEST_CHIP[$dev]}) 使用配置: ${LATEST_CONFIGS[$dev]} (日期: ${LATEST_DATETIME[$dev]})"
           done
 
           MATRIX_ITEMS=()
           for dev in "${ENABLED_DEVICES[@]}"; do
             if [ -n "${LATEST_CONFIGS[$dev]}" ]; then
-              MATRIX_ITEMS+=("$(jq -cn --arg device "$dev" --arg config "${LATEST_CONFIGS[$dev]}" '{device:$device,config:$config}')")
+              MATRIX_ITEMS+=("$(jq -cn --arg device "$dev" --arg chip "${LATEST_CHIP[$dev]}" --arg config "${LATEST_CONFIGS[$dev]}" '{device:$device,chip:$chip,config:$config}')")
             else
               echo "::warning::设备 [$dev] 未找到配置文件，已跳过"
             fi
@@ -94,6 +97,7 @@ jobs:
         include: ${{ fromJson(needs.prepare.outputs.matrix) }}
     env:
       DEVICE_NAME: ${{ matrix.device }}
+      CHIP_NAME: ${{ matrix.chip }}
       CONFIG_FILE: ${{ matrix.config }}
     steps:
       - name: 检查仓库 (Checkout Repository)
@@ -234,7 +238,7 @@ jobs:
           ==========================================
           Build Date: $(date)
           Device: ${{ matrix.device }}
-          Target: mediatek/filogic
+          Chip: ${{ matrix.chip }}
           Config File: $(basename "${{ env.CONFIG_FILE }}")
           Source Code: $(cat ${{ env.SOURCE_CODE_URL_FILE }})
 
@@ -263,22 +267,32 @@ jobs:
         if: steps.compile.outputs.compile_completed == 'true'
         working-directory: ${{ env.OPENWRT_DIR }}
         run: |
-          TARGET_DIR="bin/targets/mediatek/filogic"
+          # 动态探测输出目录 (bin/targets/<target>/<subtarget>)，兼容不同芯片/平台
+          TARGET_PATH=$(find bin/targets -mindepth 2 -maxdepth 2 -type d | head -n 1)
+          if [ -z "$TARGET_PATH" ]; then
+            echo "::error::未找到编译输出目录 bin/targets/*/*"
+            exit 1
+          fi
+          TARGET_NAME="${TARGET_PATH#bin/targets/}"
+          echo "输出目录: $TARGET_PATH (平台: $TARGET_NAME)"
+
           7z a -mx=9 -mmt=$(nproc) bin.7z bin/
-          mkdir -p "$TARGET_DIR"
-          mv bin.7z "$TARGET_DIR/"
-          mv make.log "$TARGET_DIR/"
-          cd "$TARGET_DIR"
+          mv bin.7z "$TARGET_PATH/"
+          mv make.log "$TARGET_PATH/"
+          cd "$TARGET_PATH"
           rm -rf packages
           echo "固件文件列表:"
           ls -la *.bin *.img *.trx *.chk *.sys *.rom *.fit *.itb *.7z *.log 2>/dev/null || true
+
+          echo "TARGET_DIR=${{ env.OPENWRT_DIR }}/$TARGET_PATH" >> $GITHUB_ENV
+          echo "TARGET_NAME=$TARGET_NAME" >> $GITHUB_ENV
 
       - name: 上传固件 Artifact (Upload Firmware Artifact)
         if: steps.compile.outputs.compile_completed == 'true'
         uses: actions/upload-artifact@main
         with:
           name: openwrt-firmware-${{ matrix.device }}
-          path: ${{ env.OPENWRT_DIR }}/bin/targets/mediatek/filogic/
+          path: ${{ env.TARGET_DIR }}/
           retention-days: 30
 
       - name: 生成成功 Release 信息
@@ -296,7 +310,8 @@ jobs:
           ==========================================
           Build Date: $(date)
           Device: ${{ matrix.device }}
-          Target: mediatek/filogic
+          Chip: ${{ matrix.chip }}
+          Target: ${TARGET_NAME}
           Config File: $(basename "${{ env.CONFIG_FILE }}")
           Source Code: $(cat ${{ env.SOURCE_CODE_URL_FILE }})
 
@@ -315,6 +330,6 @@ jobs:
           tag_name: ${{ steps.success_release.outputs.release_tag }}
           name: "ImmortalWRT ${{ matrix.device }} - ${{ env.BUILD_DATETIME }}"
           body_path: release_success.txt
-          files: ${{ env.OPENWRT_DIR }}/bin/targets/mediatek/filogic/*
+          files: ${{ env.TARGET_DIR }}/*
           draft: false
           prerelease: false

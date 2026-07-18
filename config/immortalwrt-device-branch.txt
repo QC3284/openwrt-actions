@@ -3,3 +3,4 @@
 # 未列出的设备默认使用 25.12 分支
 glinet_gl-mt3000 25.12
 konka_komi-a31 25.12
+glinet_gl-mt3600be 25.12-dev-wifi7

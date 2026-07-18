@@ -9,7 +9,7 @@
 
 | 工作流 | 源码 | 状态 | 说明 |
 | --- | --- | --- | --- |
-| `Build-immortalwrt.yml` | [immortalwrt-mt798x-rebase](https://github.com/chasey-dev/immortalwrt-mt798x-rebase) | ✅ 维护中 | 多设备矩阵并行编译 (MT7981/filogic)，含失败处理 |
+| `Build-immortalwrt.yml` | [immortalwrt-mt798x-rebase](https://github.com/chasey-dev/immortalwrt-mt798x-rebase) | ✅ 维护中 | 多设备矩阵并行编译 (MT798x 系列)，含失败处理 |
 | `Build-lede.yml` | [coolsnowwolf/lede](https://github.com/coolsnowwolf/lede) | ⛔ 停止更新 | 编译 LEDE |
 | `Build-openwrt.yml` | [openwrt/openwrt](https://git.openwrt.org/openwrt/openwrt.git) | ⛔ 停止更新 | 编译官方 OpenWrt (main 分支) |
 | `Build-X-wrt.yml` | [x-wrt/x-wrt](https://github.com/x-wrt/x-wrt) | ⛔ 停止更新 | 按指定 tag 编译 X-Wrt |
@@ -18,7 +18,7 @@
 
 ## ImmortalWrt 编译流程
 
-1. **prepare**：读取 `config/immortalwrt-mt7981-enable-configs.txt` 中启用的设备，在 `config/immortalwrt-mt7981/` 中按文件名时间戳自动选取每个设备最新的 `.config`，生成编译矩阵
+1. **prepare**：读取 `config/immortalwrt-mt798x-enable-configs.txt` 中启用的设备，在 `config/immortalwrt-mt798x/` 中按文件名时间戳自动选取每个设备最新的 `.config`，生成编译矩阵
 2. **compile**（矩阵并行，每设备独立 job）：
    - 拉取源码后，通过 `script/immortalwrt-switch-branch.sh` 按 `config/immortalwrt-device-branch.txt` 切换设备对应分支（未配置则默认 `25.12`）
    - 执行 DIY 脚本注入第三方插件，更新并安装 feeds
@@ -31,8 +31,8 @@
 ```
 ├── .github/workflows/        # 各源码的编译工作流
 ├── config/
-│   ├── immortalwrt-mt7981/                    # 各设备编译配置 (按 设备名-时间戳 命名)
-│   ├── immortalwrt-mt7981-enable-configs.txt  # 启用编译的设备列表
+│   ├── immortalwrt-mt798x/                    # 各设备编译配置 (按 设备名-时间戳 命名)
+│   ├── immortalwrt-mt798x-enable-configs.txt  # 启用编译的设备列表
 │   ├── immortalwrt-device-branch.txt          # 机型与源码分支对应表
 │   ├── *-url.txt                              # 各源码仓库地址 (含分支参数)
 │   ├── *-banner*.txt                          # 自定义登录 banner
@@ -53,15 +53,15 @@
 
 ### 新增/更新设备配置 (ImmortalWrt)
 
-1. 将 `.config` 命名为 `immortalwrt-actions-mt7981-<设备名>-<YYYYMMDDHHMMSS>.config` 放入 `config/immortalwrt-mt7981/`
-2. 在 `config/immortalwrt-mt7981-enable-configs.txt` 中添加设备名（每行一个，`#` 为注释）
+1. 将 `.config` 命名为 `immortalwrt-actions-<芯片型号>-<设备名>-<YYYYMMDDHHMMSS>.config`（如 `immortalwrt-actions-mt7981-glinet_gl-mt3000-20260710202710.config`）放入 `config/immortalwrt-mt798x/`
+2. 在 `config/immortalwrt-mt798x-enable-configs.txt` 中添加设备名（每行一个，`#` 为注释）
 3. 如需非默认分支，在 `config/immortalwrt-device-branch.txt` 中添加 `<设备名> <分支名>`
 
 工作流会自动选取每个设备时间戳最新的配置文件。
 
 ### 停用某个设备
 
-在 `config/immortalwrt-mt7981-enable-configs.txt` 中删除或注释对应行即可，无需删除配置文件。
+在 `config/immortalwrt-mt798x-enable-configs.txt` 中删除或注释对应行即可，无需删除配置文件。
 
 ## 固件默认信息
 
