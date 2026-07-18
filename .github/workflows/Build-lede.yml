@@ -33,10 +33,10 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-    - name: Checkout
+    - name: 检出仓库 (Checkout Repository)
       uses: actions/checkout@main
 
-    - name: Initialization environment
+    - name: 初始化环境 (Initialize Environment)
       env:
         DEBIAN_FRONTEND: noninteractive
       run: |
@@ -51,7 +51,7 @@ jobs:
         sudo chown $USER:$GROUPS /workdir
         echo Done
         
-    - name: 安装必要软件包 (Installation of necessary packages)
+    - name: 安装必要软件包 (Install Necessary Packages)
       run: |
         echo Start
         echo $(uname -a) 
@@ -63,7 +63,7 @@ jobs:
         echo Done
         sleep 10
 
-    - name: 拉取源码 (Pulling the source code)
+    - name: 拉取源码 (Pull Source Code)
       working-directory: /workdir
       run: |
         df -hT $PWD 
@@ -72,14 +72,14 @@ jobs:
         cd openwrt
         git pull
         
-    - name: 复制横幅 ( banner)
+    - name: 复制横幅 (Copy Banner)
       run: |
         cd openwrt/package/base-files/files/etc/
         sudo rm -rf banner
         ls
         cp $GITHUB_WORKSPACE/config/lede-github-actions-banner.txt banner
 
-    - name: 更新Feed (Update Feed)
+    - name: 更新 Feeds (Update Feeds)
       run: |
         cd openwrt
         sed -i '1i src-git kenzo https://github.com/kenzok8/openwrt-packages' feeds.conf.default
@@ -91,13 +91,13 @@ jobs:
         rm -rf feeds/packages/lang/golang
         git clone https://github.com/kenzok8/golang feeds/packages/lang/golang
         
-    - name: 安装Feed (Install Feed)
+    - name: 安装 Feeds (Install Feeds)
       run: |
          cd openwrt
          ./scripts/feeds install -a
          df -hT $PWD
 
-    - name: 下载包 (Download package (dl library))
+    - name: 下载依赖包 (Download Packages)
       run: |
          cd openwrt
          cp $GITHUB_WORKSPACE/config/lede-actions-xiaomi_cr660x_mt7621-20260120.config .config
@@ -119,17 +119,17 @@ jobs:
          cd bin/targets/ramips/mt7621/
          echo "完成 (Finished.)"
 
-    - name: 检查空间使用情况 (Check space usage)
+    - name: 检查空间使用情况 (Check Space Usage)
       if: (!cancelled())
       run: df -hT
 
-    - name:  上传bin目录 (Upload bin directory)
+    - name: 上传 bin 目录 (Upload bin Directory)
       uses: actions/upload-artifact@main
       with:
         name: OpenWrt_bin${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
         path: openwrt/bin
 
-    - name: 整理文件 (Sort out documents)
+    - name: 整理文件 (Organize Files)
       id: organize
       run: |
         cd openwrt/bin/targets/*/*
@@ -137,13 +137,13 @@ jobs:
         echo "FIRMWARE=$PWD" >> $GITHUB_ENV
         echo "status=success" >> $GITHUB_OUTPUT
 
-    - name: 上传固件目录 (Uploading Firmware Directory)
+    - name: 上传固件目录 (Upload Firmware Directory)
       uses: actions/upload-artifact@main
       with:
         name: OpenWrt_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
         path: ${{ env.FIRMWARE }}
 
-    - name: 生成发布标签 (Generate publish tags)
+    - name: 生成发布标签 (Generate Release Tag)
       id: tag
       run: |
         echo "release_tag=$(date +"%Y.%m.%d-%H%M-LEDE")" >> $GITHUB_OUTPUT
@@ -151,7 +151,7 @@ jobs:
         bash $GITHUB_WORKSPACE/script/lede-github-actions-rl.sh
         echo "status=success" >> $GITHUB_OUTPUT
 
-    - name: 上传固件以发布 (Upload firmware for release)
+    - name: 上传固件以发布 (Upload Firmware for Release)
       uses: softprops/action-gh-release@v2
       if: steps.tag.outputs.status == 'success' && !cancelled()
       env:
@@ -161,7 +161,7 @@ jobs:
         body_path: release.txt
         files: ${{ env.FIRMWARE }}/*
      
-    - name: 删除旧版本和删除工作流运行 (Delete old version and Delete workflow run)
+    - name: 删除旧 Release 与工作流运行记录 (Delete Old Releases and Workflow Runs)
       uses: ophub/delete-releases-workflows@main
       with:
         delete_releases: true

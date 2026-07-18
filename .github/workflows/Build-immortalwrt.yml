@@ -6,7 +6,7 @@
 # This is free software, licensed under the GNU GPLv3 License.
 # See /LICENSE for more information.
 
-name: 编译immortalwrt (Compile immortalwrt)
+name: 编译 ImmortalWrt (Compile ImmortalWrt)
 
 on:
   schedule:
@@ -25,7 +25,7 @@ jobs:
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
-      - name: 检查仓库 (Checkout Repository)
+      - name: 检出仓库 (Checkout Repository)
         uses: actions/checkout@main
         with:
           fetch-depth: 1
@@ -100,7 +100,7 @@ jobs:
       CHIP_NAME: ${{ matrix.chip }}
       CONFIG_FILE: ${{ matrix.config }}
     steps:
-      - name: 检查仓库 (Checkout Repository)
+      - name: 检出仓库 (Checkout Repository)
         uses: actions/checkout@main
         with:
           fetch-depth: 1
@@ -153,7 +153,7 @@ jobs:
         run: |
           bash ${{ github.workspace }}/script/immortalwrt-switch-branch.sh "$DEVICE_NAME" "${{ env.OPENWRT_DIR }}" "${{ github.workspace }}/config/immortalwrt-device-branch.txt"
 
-      - name: 更新并安装Feeds
+      - name: 更新并安装 Feeds (Update and Install Feeds)
         working-directory: ${{ env.OPENWRT_DIR }}
         run: |
           bash ${{ github.workspace }}/script/immortalwrt-actions-diy1.sh
@@ -161,14 +161,14 @@ jobs:
           bash ${{ github.workspace }}/script/immortalwrt-actions-diy2.sh
           ./scripts/feeds install -a
 
-      - name: 准备配置文件
+      - name: 准备配置文件 (Prepare Config File)
         working-directory: ${{ env.OPENWRT_DIR }}
         run: |
           cp "${{ env.CONFIG_FILE }}" .config
           make defconfig
           bash ${{ github.workspace }}/script/x-wrt-make-001.sh
 
-      - name: 编译固件（捕获退出码，不立刻终止）
+      - name: 编译固件，失败时不立即终止 (Compile Firmware)
         id: compile
         working-directory: ${{ env.OPENWRT_DIR }}
         run: |
@@ -224,7 +224,7 @@ jobs:
             ${{ env.OPENWRT_DIR }}/error_report.md
           retention-days: 7
 
-      - name: 生成失败 Release 信息
+      - name: 生成失败 Release 信息 (Generate Failure Release Info)
         if: steps.compile.outputs.compile_completed == 'false'
         id: failed_release
         run: |
@@ -263,7 +263,7 @@ jobs:
           prerelease: true
 
       # ---------- 编译成功处理 ----------
-      - name: 压缩完整 bin 目录并整理固件
+      - name: 压缩完整 bin 目录并整理固件 (Compress bin Directory and Organize Firmware)
         if: steps.compile.outputs.compile_completed == 'true'
         working-directory: ${{ env.OPENWRT_DIR }}
         run: |
@@ -295,7 +295,7 @@ jobs:
           path: ${{ env.TARGET_DIR }}/
           retention-days: 30
 
-      - name: 生成成功 Release 信息
+      - name: 生成成功 Release 信息 (Generate Success Release Info)
         if: steps.compile.outputs.compile_completed == 'true'
         id: success_release
         run: |
@@ -321,7 +321,7 @@ jobs:
           - Compilation log (make.log)
           EOF
 
-      - name: 发布成功 Release (Create Release)
+      - name: 发布成功 Release (Create Success Release)
         if: steps.compile.outputs.compile_completed == 'true'
         uses: softprops/action-gh-release@master
         env:

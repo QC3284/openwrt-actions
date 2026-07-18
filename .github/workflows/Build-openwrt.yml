@@ -6,7 +6,7 @@
 # This is free software, licensed under the GNU GPLv3 License.
 # See /LICENSE for more information.
 
-name: 编译openwrt (Compile openwrtwrt)
+name: 编译 OpenWrt (Compile OpenWrt)
 
 on:
   schedule:
@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
-    - name: 检查仓库 (Checkout Repository)
+    - name: 检出仓库 (Checkout Repository)
       uses: actions/checkout@main
       with:
         fetch-depth: 1
@@ -164,13 +164,13 @@ jobs:
         git reset --hard origin/HEAD
         echo "Source code updated to latest version"
 
-    - name: 更新Feed (Update Feeds)
+    - name: 更新 Feeds (Update Feeds)
       working-directory: ${{ env.OPENWRT_DIR }}
       run: |
         ./scripts/feeds update -a
         echo "Feeds updated successfully"
 
-    - name: 安装Feed (Install Feeds)
+    - name: 安装 Feeds (Install Feeds)
       working-directory: ${{ env.OPENWRT_DIR }}
       run: |
         ./scripts/feeds install -a
@@ -261,7 +261,7 @@ jobs:
         echo "OpenWRT directory size:"
         du -sh ${{ env.OPENWRT_DIR }}
 
-    - name: 上传完整bin目录 (Upload Full Bin Directory)
+    - name: 上传完整 bin 目录 (Upload Full bin Directory)
       uses: actions/upload-artifact@main
       with:
         name: OpenWrt_bin${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
