@@ -1,8 +1,10 @@
 #!/bin/bash
-#本仓库及文件只在Github发布
-#作者：QC3284@github.com(https://github.com/QC3284)
-#本仓库地址：https://github.com/QC3284/openwrt-actions
-#最后更新时间：2024.11.30
+# https://github.com/QC3284/openwrt-actions
+#
+# Copyright (c) 2024-2026 QC3284 <https://www.xcqcoo.top>
+#
+# This is free software, licensed under the GNU GPLv3 License.
+# See /LICENSE for more information.
 # 用途：编译前预下载所有依赖源码包 (make download)，并清理下载不完整的文件
 make download -j8 2>&1 | tee make_download.log
 sleep 2

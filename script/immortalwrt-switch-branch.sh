@@ -1,6 +1,13 @@
 #!/bin/bash
+
+# https://github.com/QC3284/openwrt-actions
+#
+# Copyright (c) 2024-2026 QC3284 <https://www.xcqcoo.top>
+#
+# This is free software, licensed under the GNU GPLv3 License.
+# See /LICENSE for more information.
+
 # 用法: bash immortalwrt-switch-branch.sh <设备名> [源码目录] [配置文件]
-# 根据配置文件中的机型-分支对应关系切换源码分支，未匹配则默认 25.12
 
 set -e
 

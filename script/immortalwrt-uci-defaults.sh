@@ -1,9 +1,13 @@
 #!/bin/sh
-# ImmortalWrt uci-defaults 自定义脚本 (首次启动时自动执行)
-# 本仓库地址：https://github.com/QC3284/openwrt-actions
+
+# https://github.com/QC3284/openwrt-actions
 #
-# 兼容性说明: 本脚本仅使用 busybox ash 内置命令及 OpenWrt 标准工具
-#   - uci (OpenWrt 标配)
+# Copyright (c) 2024-2026 QC3284 <https://www.xcqcoo.top>
+#
+# This is free software, licensed under the GNU GPLv3 License.
+# See /LICENSE for more information.
+
+# ImmortalWrt uci-defaults 自定义脚本 (首次启动时自动执行)
 #   - sed, grep, mv, cp, mkdir, chmod, rm, cat (busybox)
 #   - [ -x / -f / -d ] (busybox test)
 #   - 不依赖 bash 扩展，不依赖 GNU sed，不依赖 awk

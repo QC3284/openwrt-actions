@@ -1,16 +1,12 @@
 
 # https://github.com/QC3284/openwrt-actions
-# File name: Build-X-lede.yml
+# File name: Build-lede.yml
 #
 # Copyright (c) 2024-2025 QC3284 <https://www.xcqcoo.top>
 #
 # This is free software, licensed under the GNU GPLv3 License.
 # See /LICENSE for more information.
 #
-#本仓库及文件只在Github发布
-#作者：QC3284@github.com(https://github.com/QC3284)
-#本仓库地址：https://github.com/QC3284/openwrt-actions
-#最后更新时间：2025.7.28
 
 name: 编译lede (Compile lede)
 
