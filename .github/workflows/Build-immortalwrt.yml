@@ -24,14 +24,129 @@ jobs:
     runs-on: ubuntu-24.04
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
+      skip: ${{ steps.check-source.outputs.skip }}
     steps:
       - name: 检出仓库 (Checkout Repository)
         uses: actions/checkout@main
         with:
           fetch-depth: 1
 
+      - name: 检查源码是否更新 (Check Source Updates)
+        id: check-source
+        run: |
+          SOURCE_URL=$(awk '{print $NF}' ${{ env.SOURCE_CODE_URL_FILE }})
+          DEFAULT_BRANCH=$(awk '{for(i=1;i<NF;i++) if($i=="-b") print $(i+1)}' ${{ env.SOURCE_CODE_URL_FILE }})
+          [ -z "$DEFAULT_BRANCH" ] && DEFAULT_BRANCH="25.12"
+          echo "源码仓库: $SOURCE_URL"
+          echo "默认分支: $DEFAULT_BRANCH"
+
+          BRANCH_FILE="${{ github.workspace }}/config/immortalwrt-device-branch.txt"
+          ENABLE_FILE="${{ github.workspace }}/config/immortalwrt-mt798x-enable-configs.txt"
+          TRACK_FILE="${{ github.workspace }}/config/immortalwrt-last-commit.txt"
+
+          mapfile -t ENABLED_DEVICES < <(grep -v '^[[:space:]]*#' "$ENABLE_FILE" | grep -v '^[[:space:]]*$')
+
+          get_branch() {
+            local dev=$1
+            local branch=$DEFAULT_BRANCH
+            if [ -f "$BRANCH_FILE" ]; then
+              local match=$(grep -v '^[[:space:]]*#' "$BRANCH_FILE" | awk -v d="$dev" '$1 == d {print $2; exit}')
+              [ -n "$match" ] && branch="$match"
+            fi
+            echo "$branch"
+          }
+
+          load_stored() {
+            if [ -f "$TRACK_FILE" ]; then
+              grep -v '^[[:space:]]*#' "$TRACK_FILE" | grep -v '^[[:space:]]*$'
+            fi
+          }
+
+          # 收集每个设备对应的分支及远端最新提交
+          declare -A DEV_BRANCH
+          declare -A DEV_COMMIT
+          declare -A UNIQUE_BRANCHES
+          for dev in "${ENABLED_DEVICES[@]}"; do
+            branch=$(get_branch "$dev")
+            DEV_BRANCH[$dev]=$branch
+            UNIQUE_BRANCHES[$branch]=1
+          done
+
+          # 批量获取所有唯一分支的最新提交 (git ls-remote)
+          echo ""
+          echo "=== 获取远端提交 ==="
+          for branch in "${!UNIQUE_BRANCHES[@]}"; do
+            commit=$(git ls-remote "$SOURCE_URL" "refs/heads/$branch" 2>/dev/null | awk '{print $1}')
+            if [ -z "$commit" ]; then
+              echo "::warning::无法获取分支 $branch 的提交 ID"
+              commit="unknown"
+            fi
+            for dev in "${ENABLED_DEVICES[@]}"; do
+              if [ "${DEV_BRANCH[$dev]}" = "$branch" ]; then
+                DEV_COMMIT[$dev]=$commit
+              fi
+            done
+            echo "分支 $branch: $commit"
+          done
+
+          # 对比存储的上次提交 (仅在 schedule 触发时跳过未变更的构建)
+          ALL_MATCH=true
+          STORED=$(load_stored)
+          for dev in "${ENABLED_DEVICES[@]}"; do
+            stored_sha=$(echo "$STORED" | awk -F= -v b="${DEV_BRANCH[$dev]}" '$1 == b {print $2}')
+            current_sha="${DEV_COMMIT[$dev]}"
+            if [ "$stored_sha" != "$current_sha" ]; then
+              ALL_MATCH=false
+              echo "变更检测: $dev (分支 ${DEV_BRANCH[$dev]}) $stored_sha -> $current_sha"
+            else
+              echo "未变更:   $dev (分支 ${DEV_BRANCH[$dev]}) $current_sha"
+            fi
+          done
+
+          # 更新跟踪文件
+          for branch in "${!UNIQUE_BRANCHES[@]}"; do
+            commit="${DEV_COMMIT[${ENABLED_DEVICES[0]}]}"  # fallback
+            for dev in "${ENABLED_DEVICES[@]}"; do
+              if [ "${DEV_BRANCH[$dev]}" = "$branch" ]; then
+                commit="${DEV_COMMIT[$dev]}"
+                break
+              fi
+            done
+            grep -q "^${branch}=" "$TRACK_FILE" 2>/dev/null && \
+              sed -i "s|^${branch}=.*|${branch}=${commit}|" "$TRACK_FILE" || \
+              echo "${branch}=${commit}" >> "$TRACK_FILE"
+          done
+
+          if [ "${{ github.event_name }}" = "schedule" ] && [ "$ALL_MATCH" = true ]; then
+            echo ""
+            echo "所有设备源码未变更，跳过本次编译"
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo ""
+            if [ "${{ github.event_name }}" != "schedule" ]; then
+              echo "手动触发，跳过变更检测"
+            else
+              echo "检测到源码变更，继续编译"
+            fi
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: 提交源码跟踪记录 (Commit Source Tracking)
+        if: github.event_name == 'schedule'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add config/immortalwrt-last-commit.txt
+          if git diff --cached --quiet; then
+            echo "跟踪文件无变更"
+          else
+            git commit -m "track: update source commit [skip ci]"
+            git push
+          fi
+
       - name: 生成编译矩阵 (Generate Build Matrix)
         id: set-matrix
+        if: steps.check-source.outputs.skip != 'true'
         run: |
           ENABLE_FILE="${{ github.workspace }}/config/immortalwrt-mt798x-enable-configs.txt"
           CONFIG_DIR="${{ github.workspace }}/config/immortalwrt-mt798x"
@@ -88,7 +203,7 @@ jobs:
 
   compile:
     needs: prepare
-    if: needs.prepare.outputs.matrix != '[]'
+    if: needs.prepare.outputs.skip != 'true' && needs.prepare.outputs.matrix != '[]'
     runs-on: ubuntu-24.04
     timeout-minutes: 360
     strategy:
