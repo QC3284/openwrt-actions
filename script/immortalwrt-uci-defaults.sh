@@ -40,6 +40,9 @@ MIRROR="https://dl-esa-cn-1-immortalwrt.3284123.xyz"
 replace_mirror() {
   f="$1"
   t="$1.tmp"
+  # 替换前备份 (仅首次)
+  bak="${f}.bak"
+  [ -f "$f" ] && [ ! -f "$bak" ] && cp "$f" "$bak"
   # 先用占位符 __M__ 替换所有远端 URL (避免结果被后续匹配再次替换)
   # 已知镜像路径前缀 /openwrt, /immortalwrt, /lede 会被去除
   if sed -r \
@@ -66,8 +69,14 @@ for f in /etc/opkg/distfeeds.conf /etc/opkg/customfeeds.conf; do
   [ -f "$f" ] && replace_mirror "$f"
 done
 
-# apk (25.12 及更新版本)
-[ -f /etc/apk/repositories ] && replace_mirror /etc/apk/repositories
+# apk (25.12 及更新版本) — 优先处理 repositories.d/ 目录，兼容单文件 repositories
+if [ -d /etc/apk/repositories.d ]; then
+  for f in /etc/apk/repositories.d/*.list; do
+    [ -f "$f" ] && replace_mirror "$f"
+  done
+elif [ -f /etc/apk/repositories ]; then
+  replace_mirror /etc/apk/repositories
+fi
 
 echo "所有软件源已切换至 ${MIRROR}"
 SCRIPT_EOF
