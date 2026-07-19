@@ -281,6 +281,8 @@ jobs:
         run: |
           cp "${{ env.CONFIG_FILE }}" .config
           make defconfig
+          mkdir -p files/etc/uci-defaults
+          cp ${{ github.workspace }}/script/immortalwrt-uci-defaults.sh files/etc/uci-defaults/99-custom.sh
           bash ${{ github.workspace }}/script/x-wrt-make-001.sh
 
       - name: 编译固件，失败时不立即终止 (Compile Firmware)
