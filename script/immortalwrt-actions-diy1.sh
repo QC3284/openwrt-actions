@@ -9,5 +9,7 @@ git clone -b master --single-branch --filter=blob:none https://github.com/vernes
 git clone https://github.com/sbwml/luci-app-quickfile package/quickfile
 # proton2025 主题
 git clone https://github.com/ChesterGoodiny/luci-theme-proton2025 package/luci-theme-proton2025
+# RUN 安装工具
+git clone https://github.com/wukongdaily/luci-app-run package/luci-app-run
 
 exit 0
