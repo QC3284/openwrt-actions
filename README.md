@@ -13,13 +13,16 @@
 | `Build-lede.yml` | [coolsnowwolf/lede](https://github.com/coolsnowwolf/lede) | ⛔ 停止更新 | 编译 LEDE |
 | `Build-openwrt.yml` | [openwrt/openwrt](https://git.openwrt.org/openwrt/openwrt.git) | ⛔ 停止更新 | 编译官方 OpenWrt (main 分支) |
 | `Build-X-wrt.yml` | [x-wrt/x-wrt](https://github.com/x-wrt/x-wrt) | ⛔ 停止更新 | 按指定 tag 编译 X-Wrt |
+| `Clean-old-configs.yml` | — | ✅ 维护中 | 每周日清理旧配置，每设备仅保留最新 |
 
 所有工作流均支持定时触发（每周三、六 03:00 北京时间）、手动触发 (workflow_dispatch) 和 repository_dispatch。
+`Clean-old-configs.yml` 每周日 23:00（北京时间）执行。
 
 ## ImmortalWrt 编译流程
 
-1. **prepare**：读取 `config/immortalwrt-mt798x-enable-configs.txt` 中启用的设备，在 `config/immortalwrt-mt798x/` 中按文件名时间戳自动选取每个设备最新的 `.config`，生成编译矩阵
-2. **compile**（矩阵并行，每设备独立 job）：
+1. **check-source**：定时触发时通过 `git ls-remote` 获取源码远端最新提交，与 `config/immortalwrt-last-commit.txt` 对比；若所有设备源码均未变更则跳过编译，手动触发不检查
+2. **prepare**：读取 `config/immortalwrt-mt798x-enable-configs.txt` 中启用的设备，在 `config/immortalwrt-mt798x/` 中按文件名时间戳自动选取每个设备最新的 `.config`，生成编译矩阵
+3. **compile**（矩阵并行，每设备独立 job）：
    - 拉取源码后，通过 `script/immortalwrt-switch-branch.sh` 按 `config/immortalwrt-device-branch.txt` 切换设备对应分支（未配置则默认 `25.12`）
    - 执行 DIY 脚本注入第三方插件，更新并安装 feeds
    - 先 `make -j$(nproc+1)` 编译，失败自动回退 `make -j1 V=s` 定位错误
@@ -34,6 +37,7 @@
 │   ├── immortalwrt-mt798x/                    # 各设备编译配置 (按 设备名-时间戳 命名)
 │   ├── immortalwrt-mt798x-enable-configs.txt  # 启用编译的设备列表
 │   ├── immortalwrt-device-branch.txt          # 机型与源码分支对应表
+│   ├── immortalwrt-last-commit.txt            # 各分支上次编译时的远端提交 SHA
 │   ├── *-url.txt                              # 各源码仓库地址 (含分支参数)
 │   ├── *-banner*.txt                          # 自定义登录 banner
 │   ├── x-wrt-config-tag.txt                   # X-Wrt 编译使用的 tag
