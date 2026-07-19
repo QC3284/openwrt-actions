@@ -1,0 +1,92 @@
+# https://github.com/QC3284/openwrt-actions
+# File name: Clean-old-configs.yml
+#
+# Copyright (c) 2026 QC3284 <https://www.xcqcoo.top>
+#
+# This is free software, licensed under the GNU GPLv3 License.
+# See /LICENSE for more information.
+
+name: 清理旧编译配置 (Clean Old Build Configs)
+
+on:
+  schedule:
+    - cron: '0 15 * * 0'
+  workflow_dispatch:
+
+jobs:
+  clean:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: 检出仓库 (Checkout Repository)
+        uses: actions/checkout@main
+        with:
+          fetch-depth: 1
+
+      - name: 清理旧配置 (Clean Old Configs)
+        run: |
+          CONFIG_DIR="${{ github.workspace }}/config/immortalwrt-mt798x"
+          ARCHIVE_DIR="${{ github.workspace }}/config/old_configs"
+
+          if [ ! -d "$CONFIG_DIR" ]; then
+            echo "配置目录不存在: $CONFIG_DIR"
+            exit 0
+          fi
+          mkdir -p "$ARCHIVE_DIR"
+
+          echo "扫描配置目录: $CONFIG_DIR"
+          echo ""
+
+          declare -A LATEST_CONFIGS
+          declare -A LATEST_DATETIME
+          while IFS= read -r -d '' file; do
+            filename=$(basename "$file")
+            if [[ "$filename" =~ ^immortalwrt-actions-([a-z0-9]+)-(.+)-([0-9]{14})\.config$ ]]; then
+              device="${BASH_REMATCH[2]}"
+              datetime="${BASH_REMATCH[3]}"
+              if [[ -z "${LATEST_CONFIGS[$device]}" ]] || [[ "$datetime" > "${LATEST_DATETIME[$device]}" ]]; then
+                LATEST_CONFIGS["$device"]="$filename"
+                LATEST_DATETIME["$device"]="$datetime"
+              fi
+            fi
+          done < <(find "$CONFIG_DIR" -maxdepth 1 -type f -name "immortalwrt-actions-*.config" -print0)
+
+          if [ ${#LATEST_CONFIGS[@]} -eq 0 ]; then
+            echo "未找到任何配置文件，无需清理"
+            exit 0
+          fi
+
+          MOVED_COUNT=0
+          while IFS= read -r -d '' file; do
+            filename=$(basename "$file")
+            if [[ "$filename" =~ ^immortalwrt-actions-([a-z0-9]+)-(.+)-([0-9]{14})\.config$ ]]; then
+              device="${BASH_REMATCH[2]}"
+              if [ "${LATEST_CONFIGS[$device]}" == "$filename" ]; then
+                echo "保留: $filename"
+              else
+                echo "归档: $filename -> old_configs/"
+                mv "$file" "$ARCHIVE_DIR/"
+                MOVED_COUNT=$((MOVED_COUNT + 1))
+              fi
+            fi
+          done < <(find "$CONFIG_DIR" -maxdepth 1 -type f -name "immortalwrt-actions-*.config" -print0)
+
+          echo ""
+          echo "========== 清理完成 =========="
+          for dev in "${!LATEST_CONFIGS[@]}"; do
+            echo "设备 [$dev] 保留: ${LATEST_CONFIGS[$dev]}"
+          done
+          echo "共归档 $MOVED_COUNT 个旧配置文件"
+
+      - name: 提交并推送变更 (Commit and Push Changes)
+        run: |
+          if git diff --quiet && git diff --cached --quiet; then
+            echo "无变更，跳过提交"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add config/immortalwrt-mt798x/ config/old_configs/
+          git commit -m "Clean old build configs [skip ci]
+
+          - 每个设备仅保留最新配置，其余归档至 old_configs/"
+          git push
