@@ -13,7 +13,7 @@
 #   - 不依赖 bash 扩展，不依赖 GNU sed，不依赖 awk
 
 # 1. 修改默认 LAN IP，避免与主路由冲突 (CIDR 格式适配 OpenWrt 21.02+)
-uci set network.lan.ipaddr='192.168.5.2/24'
+uci set network.lan.ipaddr='192.168.5.1/24'
 uci commit network
 
 # 2. SSH: 将 dropbear 替换为 openssh-server (确认 sshd 已安装后才禁用 dropbear)

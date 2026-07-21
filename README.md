@@ -73,17 +73,19 @@
 
 编译时自动打入 `files/etc/uci-defaults/99-custom.sh`，设备首次启动后自动执行：
 
-1. **LAN IP**：设置为 `192.168.5.2/24`（CIDR 格式，适配 OpenWrt 21.02+）
+1. **LAN IP**：设置为 `192.168.5.1/24`（CIDR 格式，适配 OpenWrt 21.02+）
 2. **SSH 切换**：检测 openssh-server 已安装后禁用 dropbear 并启用 sshd，同时迁移 `/etc/dropbear/` 下的密钥和 authorized_keys 至 `/root/.ssh/`
 3. **生成 mirrors.sh**：在 `/root/mirrors.sh` 生成一键换源脚本，执行后替换所有软件源至自定义镜像 `dl-esa-cn-1-immortalwrt.3284123.xyz`
    - 兼容 opkg（24.10 及以前）和 apk（25.12 及以后）
    - 自动去除镜像路径前缀（`/openwrt`、`/immortalwrt`、`/lede`），适配中科大、清华、阿里云、腾讯云、北外、vsean 等所有主流镜像
    - 仅依赖 busybox ash + sed，无额外依赖
 
-## 固件默认信息
+## 固件默认信息 (ImmortalWrt)
 
-- ImmortalWrt 账号/密码：`root` / 无密码
-- X-Wrt 账号/密码：`admin/admin`（SSH：`root/admin`）
+- 管理地址：`192.168.5.1/24`
+- 账号/密码：`root` / 无密码
+- SSH：`openssh-server` 已启用，`dropbear` 已禁用
+- LuCI：默认启用，通过 `http://192.168.5.1` 访问
 
 ## 许可证
 
