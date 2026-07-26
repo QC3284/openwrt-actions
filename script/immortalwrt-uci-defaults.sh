@@ -129,4 +129,22 @@ SCRIPT_EOF
 
 chmod +x /root/mirrors.sh
 
+# 4. luci-app-quickfile 检测：如已安装，配置 nginx 以启用文件管理功能
+if [ -f /usr/lib/lua/luci/controller/quickfile.lua ]; then
+  if uci -q get nginx.global >/dev/null 2>&1; then
+    uci set nginx.global.uci_enable='true'
+    uci del nginx._lan 2>/dev/null
+    uci del nginx._redirect2ssl 2>/dev/null
+    uci add nginx server
+    uci rename nginx.@server[0]='_lan'
+    uci set nginx._lan.server_name='_lan'
+    uci add_list nginx._lan.listen='80 default_server'
+    uci add_list nginx._lan.listen='[::]:80 default_server'
+    uci add_list nginx._lan.include='conf.d/*.locations'
+    uci set nginx._lan.access_log='off; # logd openwrt'
+    uci commit nginx
+    service nginx restart
+  fi
+fi
+
 exit 0
