@@ -21,19 +21,15 @@ if [ -x /etc/init.d/sshd ]; then
   if [ -x /etc/init.d/dropbear ]; then
     /etc/init.d/dropbear disable 2>/dev/null
     /etc/init.d/dropbear stop 2>/dev/null
-    rm -f /etc/rc.d/S*dropbear*
+    # 通过 uci 标记禁用 (确保 LuCI 同步状态)
+    uci -q set dropbear.@dropbear[0].enabled='0' 2>/dev/null
+    uci -q commit dropbear 2>/dev/null
   fi
   /etc/init.d/sshd enable 2>/dev/null
 
-  # 允许 root 用户密码登录 SSH
-  if uci -q get sshd.@sshd[0] >/dev/null 2>&1; then
-    uci set sshd.@sshd[0].PasswordAuthentication='yes'
-    uci set sshd.@sshd[0].PermitRootLogin='yes'
-    uci commit sshd
-  else
-    sed -i -e 's/^[[:space:]]*#[[:space:]]*\(PermitRootLogin\)/\1/' -e 's/^[[:space:]]*PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config 2>/dev/null
-    grep -q '^PermitRootLogin' /etc/ssh/sshd_config 2>/dev/null || echo 'PermitRootLogin yes' >> /etc/ssh/sshd_config
-  fi
+  # 允许 root 用户密码登录 (直接修改 sshd_config)
+  sed -i -e 's/^[[:space:]]*#[[:space:]]*\(PermitRootLogin\)/\1/' -e 's/^[[:space:]]*PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config 2>/dev/null
+  grep -q '^PermitRootLogin' /etc/ssh/sshd_config 2>/dev/null || echo 'PermitRootLogin yes' >> /etc/ssh/sshd_config
 
   # 迁移 dropbear 密钥与 authorized_keys 至 OpenSSH 目录
   mkdir -p /root/.ssh
