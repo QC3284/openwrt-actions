@@ -74,17 +74,23 @@
 编译时自动打入 `files/etc/uci-defaults/99-custom.sh`，设备首次启动后自动执行：
 
 1. **LAN IP**：设置为 `192.168.5.1/24`（CIDR 格式，适配 OpenWrt 21.02+）
-2. **SSH 切换**：检测 openssh-server 已安装后禁用 dropbear 并启用 sshd，同时迁移 `/etc/dropbear/` 下的密钥和 authorized_keys 至 `/root/.ssh/`
-3. **生成 mirrors.sh**：在 `/root/mirrors.sh` 生成一键换源脚本，执行后替换所有软件源至自定义镜像 `dl-esa-cn-1-immortalwrt.3284123.xyz`
+2. **SSH 切换**：
+   - 检测 openssh-server 已安装后，通过 init.d 禁用 dropbear 并使用 `uci set enabled='0'` 确保 LuCI 状态同步
+   - 启用 sshd，直接修改 `/etc/ssh/sshd_config` 允许 root 密码登录 (`PermitRootLogin yes`)
+   - 迁移 `/etc/dropbear/` 下的密钥和 authorized_keys 至 `/root/.ssh/`
+3. **生成 mirrors.sh**：在 `/root/mirrors.sh` 生成交互式换源脚本
+   - 支持 7 个镜像源：官方 / 自定义 / USTC / TUNA / 阿里云 / 腾讯云 / vsean
+   - 支持命令行参数直接指定（如 `mirrors.sh 3`），无输入则默认自定义镜像
    - 兼容 opkg（24.10 及以前）和 apk（25.12 及以后）
-   - 自动去除镜像路径前缀（`/openwrt`、`/immortalwrt`、`/lede`），适配中科大、清华、阿里云、腾讯云、北外、vsean 等所有主流镜像
+   - 自动去除镜像路径前缀（`/openwrt`、`/immortalwrt`、`/lede`），替换前自动备份
    - 仅依赖 busybox ash + sed，无额外依赖
+4. **luci-app-quickfile 检测**：如已安装，自动配置 nginx UCI 并重启 nginx，未安装则静默跳过
 
 ## 固件默认信息 (ImmortalWrt)
 
 - 管理地址：`192.168.5.1/24`
 - 账号/密码：`root` / 无密码
-- SSH：`openssh-server` 已启用，`dropbear` 已禁用
+- SSH：`openssh-server` 已启用（允许 root 密码登录），`dropbear` 已禁用（LuCI 状态同步）
 - LuCI：默认启用，通过 `http://192.168.5.1` 访问
 
 ## 许可证
