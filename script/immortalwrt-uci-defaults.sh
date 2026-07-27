@@ -30,6 +30,8 @@ if [ -x /etc/init.d/sshd ]; then
   # 允许 root 用户密码登录 (直接修改 sshd_config)
   sed -i -e 's/^[[:space:]]*#[[:space:]]*\(PermitRootLogin\)/\1/' -e 's/^[[:space:]]*PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config 2>/dev/null
   grep -q '^PermitRootLogin' /etc/ssh/sshd_config 2>/dev/null || echo 'PermitRootLogin yes' >> /etc/ssh/sshd_config
+  # 使配置生效
+  /etc/init.d/sshd restart 2>/dev/null
 
   # 迁移 dropbear 密钥与 authorized_keys 至 OpenSSH 目录
   mkdir -p /root/.ssh
@@ -153,5 +155,8 @@ if [ -f /usr/lib/lua/luci/controller/quickfile.lua ]; then
     service nginx restart
   fi
 fi
+
+# 5. 初始化 wget HSTS 文件 (部分固件 wget 不会自动创建，导致 https 下载异常)
+[ ! -f /root/.wget-hsts ] && touch /root/.wget-hsts
 
 exit 0

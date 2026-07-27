@@ -76,7 +76,7 @@
 1. **LAN IP**：设置为 `192.168.5.1/24`（CIDR 格式，适配 OpenWrt 21.02+）
 2. **SSH 切换**：
    - 检测 openssh-server 已安装后，通过 init.d 禁用 dropbear 并使用 `uci set enabled='0'` 确保 LuCI 状态同步
-   - 启用 sshd，直接修改 `/etc/ssh/sshd_config` 允许 root 密码登录 (`PermitRootLogin yes`)
+   - 启用 sshd，直接修改 `/etc/ssh/sshd_config` 允许 root 密码登录 (`PermitRootLogin yes`) 并重启 sshd 使配置生效
    - 迁移 `/etc/dropbear/` 下的密钥和 authorized_keys 至 `/root/.ssh/`
 3. **生成 mirrors.sh**：在 `/root/mirrors.sh` 生成交互式换源脚本
    - 支持 7 个镜像源：官方 / 自定义 / USTC / TUNA / 阿里云 / 腾讯云 / vsean
@@ -85,6 +85,7 @@
    - 自动去除镜像路径前缀（`/openwrt`、`/immortalwrt`、`/lede`），替换前自动备份
    - 仅依赖 busybox ash + sed，无额外依赖
 4. **luci-app-quickfile 检测**：如已安装，自动配置 nginx UCI 并重启 nginx，未安装则静默跳过
+5. **wget HSTS 初始化**：检查 `/root/.wget-hsts`，不存在则自动创建，避免 wget https 下载异常
 
 ## 固件默认信息 (ImmortalWrt)
 
