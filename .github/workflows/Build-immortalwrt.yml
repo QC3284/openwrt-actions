@@ -422,6 +422,17 @@ jobs:
           echo "固件文件列表:"
           ls -la *.bin *.img *.trx *.chk *.sys *.rom *.fit *.itb *.7z *.log 2>/dev/null || true
 
+          # 给固件文件名追加时间戳
+          TS_SUFFIX="_$(date +%Y%m%d%H%M)"
+          for f in *.bin *.img *.trx *.chk *.sys *.rom *.fit *.itb 2>/dev/null; do
+            [ -f "$f" ] || continue
+            base="${f%.*}"
+            ext="${f##*.}"
+            newname="${base}${TS_SUFFIX}.${ext}"
+            mv "$f" "$newname" 2>/dev/null && echo "  重命名: $f -> $newname"
+          done
+          echo ""
+
           echo "TARGET_DIR=${{ env.OPENWRT_DIR }}/$TARGET_PATH" >> $GITHUB_ENV
           echo "TARGET_NAME=$TARGET_NAME" >> $GITHUB_ENV
 
