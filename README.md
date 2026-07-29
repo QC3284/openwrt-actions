@@ -23,6 +23,14 @@
 `Clean-old-configs.yml` 每周日 23:00（北京时间）执行。
 `Build-immortalwrt-single.yml` 仅支持手动触发，可指定设备名、分支和配置文件。
 
+### 当前编译设备
+
+| 设备 | 芯片 | 分支 |
+|------|------|------|
+| `glinet_gl-mt3000` | mt7981 | 25.12 |
+| `konka_komi-a31` | mt7981 | 25.12 |
+| `glinet_gl-mt3600be` | mt7987 | 25.12-dev-wifi7 |
+
 ## 快速开始 (Quick Start)
 
 ### 首次使用

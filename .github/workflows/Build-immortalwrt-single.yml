@@ -142,7 +142,7 @@ jobs:
       - name: 拉取源码 (Pull Source Code)
         working-directory: /workdir
         run: |
-          git clone $(cat ${{ env.SOURCE_CODE_URL_FILE }} | awk '{print $NF}') openwrt
+          git clone $(cat ${{ env.SOURCE_CODE_URL_FILE }}) openwrt
 
       - name: 链接源码目录 (Link Source Code Directory)
         run: |

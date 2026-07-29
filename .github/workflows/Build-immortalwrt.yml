@@ -444,7 +444,7 @@ jobs:
           Chip:          ${{ matrix.chip }}
           Target:        ${{ env.TARGET_NAME }}
           Config:        $(basename "${{ env.CONFIG_FILE }}")
-          Source Repo:   $(cat ${{ env.SOURCE_CODE_URL_FILE }} | awk '{print $NF}')
+          Source Repo:   $(cat ${{ env.SOURCE_CODE_URL_FILE }})
           Source Branch: ${SOURCE_BRANCH}
           Source Commit: ${SOURCE_COMMIT}
           GitHub Repo:   ${{ github.repository }}
