@@ -312,7 +312,20 @@ jobs:
           else
             echo "编译失败，退出码: $EXIT_CODE"
             echo "compile_completed=false" >> $GITHUB_OUTPUT
-            # 注意：不 exit 1，让工作流继续执行失败处理步骤
+            # 不 exit 1，让工作流继续执行失败处理步骤
+          fi
+
+          # 截断过大的 make.log (GitHub Artifact 单文件限制约 2GB, 保留尾部便于排查)
+          LOG_LINES=$(wc -l < make.log)
+          if [ "$LOG_LINES" -gt 100000 ]; then
+            echo "make.log 过大 ($LOG_LINES 行), 保留首尾各 3000 行"
+            head -3000 make.log > make.log.tmp
+            echo "" >> make.log.tmp
+            echo "...... [中间省略 $((LOG_LINES - 6000)) 行] ......" >> make.log.tmp
+            echo "" >> make.log.tmp
+            tail -3000 make.log >> make.log.tmp
+            mv make.log.tmp make.log
+            echo "make.log 已截断至 $(wc -l < make.log) 行"
           fi
 
       # ---------- 编译失败处理 ----------
@@ -418,12 +431,11 @@ jobs:
       - name: 生成构建信息 (Generate Build Info)
         if: steps.compile.outputs.compile_completed == 'true'
         run: |
-          # 获取源码当前提交信息
           cd ${{ env.OPENWRT_DIR }}
           SOURCE_COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
           SOURCE_BRANCH=$(git branch --show-current 2>/dev/null || echo "unknown")
 
-          cat > ${{ env.OPENWRT_DIR }}/$TARGET_PATH/build-info.txt << EOF
+          cat > ${{ env.TARGET_DIR }}/build-info.txt << EOF
           Image Builder Info
           ==========================================
           Build Date:    $(date '+%Y-%m-%d %H:%M:%S %Z')
@@ -431,7 +443,7 @@ jobs:
           Run ID:        ${{ github.run_id }}
           Device:        ${{ matrix.device }}
           Chip:          ${{ matrix.chip }}
-          Target:        ${TARGET_NAME}
+          Target:        ${{ env.TARGET_NAME }}
           Config:        $(basename "${{ env.CONFIG_FILE }}")
           Source Repo:   $(cat ${{ env.SOURCE_CODE_URL_FILE }} | awk '{print $NF}')
           Source Branch: ${SOURCE_BRANCH}
@@ -464,7 +476,7 @@ jobs:
           Build Date: $(date)
           Device: ${{ matrix.device }}
           Chip: ${{ matrix.chip }}
-          Target: ${TARGET_NAME}
+           Target: ${{ env.TARGET_NAME }}
           Config File: $(basename "${{ env.CONFIG_FILE }}")
           Source Code: $(cat ${{ env.SOURCE_CODE_URL_FILE }})
 

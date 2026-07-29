@@ -1,0 +1,16 @@
+# https://github.com/QC3284/openwrt-actions
+# Copyright (c) 2026 QC3284
+# Licensed under GNU GPLv3 License
+
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "saturday"
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "actions"
+    open-pull-requests-limit: 5
