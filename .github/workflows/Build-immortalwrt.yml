@@ -14,6 +14,10 @@ on:
   repository_dispatch:
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}
+  cancel-in-progress: ${{ github.event_name == 'schedule' }}
+
 env:
   TZ: Asia/Shanghai
   OPENWRT_DIR: /workdir/openwrt
@@ -27,7 +31,7 @@ jobs:
       skip: ${{ steps.check-source.outputs.skip }}
     steps:
       - name: 检出仓库 (Checkout Repository)
-        uses: actions/checkout@main
+        uses: actions/checkout@v4
         with:
           fetch-depth: 1
 
@@ -216,7 +220,7 @@ jobs:
       CONFIG_FILE: ${{ matrix.config }}
     steps:
       - name: 检出仓库 (Checkout Repository)
-        uses: actions/checkout@main
+        uses: actions/checkout@v4
         with:
           fetch-depth: 1
 
@@ -231,7 +235,7 @@ jobs:
           sudo chown $USER:$GROUPS /workdir
 
       - name: 释放磁盘空间 (Free Disk Space)
-        uses: jlumbroso/free-disk-space@main
+        uses: jlumbroso/free-disk-space@v1.3.1
         with:
           tool-cache: false
           android: true
@@ -321,7 +325,7 @@ jobs:
             echo ""
             echo "### 关键错误信息 (最后 50 条)"
             echo '```'
-            grep -inE "error:|error [0-9]+|fatal|collect2|No rule to make target|make\[[0-9]+\].*Error" make.log | tail -50 || echo "未匹配到关键错误，请查看完整日志"
+            grep -inE "error:|error [0-9]+|fatal|FAILED|collect2|No rule to make target|make\[[0-9]+\].*Error|Segmentation fault|undefined reference|No such file|cannot find|patch.*failed|Hunk.*FAILED" make.log | tail -50 || echo "未匹配到关键错误，请查看完整日志"
             echo '```'
             echo ""
             echo "### 日志末尾 100 行"
@@ -333,7 +337,7 @@ jobs:
 
       - name: 上传失败日志 (Upload Failure Log)
         if: steps.compile.outputs.compile_completed == 'false'
-        uses: actions/upload-artifact@main
+        uses: actions/upload-artifact@v4
         with:
           name: failed-build-log-${{ matrix.device }}-${{ github.run_id }}
           path: |
@@ -366,7 +370,7 @@ jobs:
 
       - name: 发布失败 Release (Create Failure Release - Draft)
         if: steps.compile.outputs.compile_completed == 'false'
-        uses: softprops/action-gh-release@master
+        uses: softprops/action-gh-release@v3.0.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -404,9 +408,41 @@ jobs:
           echo "TARGET_DIR=${{ env.OPENWRT_DIR }}/$TARGET_PATH" >> $GITHUB_ENV
           echo "TARGET_NAME=$TARGET_NAME" >> $GITHUB_ENV
 
+          # 生成 SHA256 校验文件
+          FIRMWARE_FILES=$(ls *.bin *.img *.trx *.chk *.sys *.rom *.fit *.itb 2>/dev/null)
+          if [ -n "$FIRMWARE_FILES" ]; then
+            sha256sum $FIRMWARE_FILES > sha256sums.txt
+            echo "SHA256 校验文件已生成"
+          fi
+
+      - name: 生成构建信息 (Generate Build Info)
+        if: steps.compile.outputs.compile_completed == 'true'
+        run: |
+          # 获取源码当前提交信息
+          cd ${{ env.OPENWRT_DIR }}
+          SOURCE_COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+          SOURCE_BRANCH=$(git branch --show-current 2>/dev/null || echo "unknown")
+
+          cat > ${{ env.OPENWRT_DIR }}/$TARGET_PATH/build-info.txt << EOF
+          Image Builder Info
+          ==========================================
+          Build Date:    $(date '+%Y-%m-%d %H:%M:%S %Z')
+          Workflow:      ${{ github.workflow }}
+          Run ID:        ${{ github.run_id }}
+          Device:        ${{ matrix.device }}
+          Chip:          ${{ matrix.chip }}
+          Target:        ${TARGET_NAME}
+          Config:        $(basename "${{ env.CONFIG_FILE }}")
+          Source Repo:   $(cat ${{ env.SOURCE_CODE_URL_FILE }} | awk '{print $NF}')
+          Source Branch: ${SOURCE_BRANCH}
+          Source Commit: ${SOURCE_COMMIT}
+          GitHub Repo:   ${{ github.repository }}
+          EOF
+          echo "build-info.txt 已生成"
+
       - name: 上传固件 Artifact (Upload Firmware Artifact)
         if: steps.compile.outputs.compile_completed == 'true'
-        uses: actions/upload-artifact@main
+        uses: actions/upload-artifact@v4
         with:
           name: openwrt-firmware-${{ matrix.device }}
           path: ${{ env.TARGET_DIR }}/
@@ -440,7 +476,7 @@ jobs:
 
       - name: 发布成功 Release (Create Success Release)
         if: steps.compile.outputs.compile_completed == 'true'
-        uses: softprops/action-gh-release@master
+        uses: softprops/action-gh-release@v3.0.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:

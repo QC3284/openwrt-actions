@@ -35,6 +35,20 @@ else
 fi
 
 cd "$REPO_DIR"
+
+# 从仓库 URL 提取源地址 (如 /workdir/openwrt 中的 origin remote)
+SOURCE_URL=$(git remote get-url origin 2>/dev/null || echo "")
+if [ -n "$SOURCE_URL" ]; then
+  REMOTE_SHA=$(git ls-remote "$SOURCE_URL" "refs/heads/$BRANCH" 2>/dev/null | awk '{print $1}')
+  if [ -z "$REMOTE_SHA" ]; then
+    echo "错误: 远端分支 $BRANCH 不存在于 $SOURCE_URL"
+    echo "回退到默认分支: $DEFAULT_BRANCH"
+    BRANCH="$DEFAULT_BRANCH"
+    REMOTE_SHA=$(git ls-remote "$SOURCE_URL" "refs/heads/$BRANCH" 2>/dev/null | awk '{print $1}')
+    [ -z "$REMOTE_SHA" ] && { echo "严重错误: 默认分支 $BRANCH 也不存在"; exit 1; }
+  fi
+fi
+
 git fetch origin "$BRANCH"
 git checkout -B "$BRANCH" "origin/$BRANCH"
 git reset --hard "origin/$BRANCH"

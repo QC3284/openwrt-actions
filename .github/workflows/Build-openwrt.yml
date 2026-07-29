@@ -19,13 +19,17 @@ env:
   OPENWRT_DIR: /workdir/openwrt
   SOURCE_CODE_URL_FILE: ${{ github.workspace }}/config/openwrt-url.txt
 
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}
+  cancel-in-progress: ${{ github.event_name == 'schedule' }}
 jobs:
   build:
     runs-on: ubuntu-24.04
 
     steps:
     - name: 检出仓库 (Checkout Repository)
-      uses: actions/checkout@main
+      uses: actions/checkout@v4
       with:
         fetch-depth: 1
 
@@ -41,7 +45,7 @@ jobs:
         echo "Work directory created at /workdir"
 
     - name: 释放磁盘空间 (Free Disk Space)
-      uses: jlumbroso/free-disk-space@main
+      uses: jlumbroso/free-disk-space@v1.3.1
       with:
         tool-cache: false
         android: true
@@ -262,7 +266,7 @@ jobs:
         du -sh ${{ env.OPENWRT_DIR }}
 
     - name: 上传完整 bin 目录 (Upload Full bin Directory)
-      uses: actions/upload-artifact@main
+      uses: actions/upload-artifact@v4
       with:
         name: OpenWrt_bin${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
         path: ${{ env.OPENWRT_DIR }}/bin
@@ -290,7 +294,7 @@ jobs:
         fi
 
     - name: 上传固件文件 (Upload Firmware Files)
-      uses: actions/upload-artifact@main
+      uses: actions/upload-artifact@v4
       with:
         name: OpenWrt_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
         path: ${{ env.FIRMWARE }}
@@ -313,7 +317,7 @@ jobs:
         bash ${{ github.workspace }}/script/immortalwrt-actions-txt.sh >> release.txt
 
     - name: 发布固件 (Release Firmware)
-      uses: softprops/action-gh-release@master
+      uses: softprops/action-gh-release@v3.0.2
       if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

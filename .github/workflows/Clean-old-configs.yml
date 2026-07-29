@@ -13,12 +13,16 @@ on:
     - cron: '0 15 * * 0'
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}
+  cancel-in-progress: ${{ github.event_name == 'schedule' }}
+
 jobs:
   clean:
     runs-on: ubuntu-24.04
     steps:
       - name: 检出仓库 (Checkout Repository)
-        uses: actions/checkout@main
+        uses: actions/checkout@v4
         with:
           fetch-depth: 1
 
