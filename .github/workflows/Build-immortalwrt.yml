@@ -494,7 +494,7 @@ jobs:
           Build Date: $(date)
           Device: ${{ matrix.device }}
           Chip: ${{ matrix.chip }}
-           Target: ${{ env.TARGET_NAME }}
+          Target: ${{ env.TARGET_NAME }}
           Config File: $(basename "${{ env.CONFIG_FILE }}")
           Source Code: $(cat ${{ env.SOURCE_CODE_URL_FILE }})
 
