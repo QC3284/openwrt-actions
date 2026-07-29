@@ -298,7 +298,7 @@ jobs:
 
       - name: 发布 Release (Create Release)
         if: steps.compile.outputs.compile_completed == 'true'
-        uses: softprops/action-gh-release@v3.0.2
+        uses: softprops/action-gh-release@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:

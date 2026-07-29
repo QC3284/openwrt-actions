@@ -387,7 +387,7 @@ jobs:
 
       - name: 发布失败 Release (Create Failure Release - Draft)
         if: steps.compile.outputs.compile_completed == 'false'
-        uses: softprops/action-gh-release@v3.0.2
+        uses: softprops/action-gh-release@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -506,7 +506,7 @@ jobs:
 
       - name: 发布成功 Release (Create Success Release)
         if: steps.compile.outputs.compile_completed == 'true'
-        uses: softprops/action-gh-release@v3.0.2
+        uses: softprops/action-gh-release@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
