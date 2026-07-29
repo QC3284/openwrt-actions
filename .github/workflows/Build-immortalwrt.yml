@@ -113,16 +113,18 @@ jobs:
 
           # 更新跟踪文件
           for branch in "${!UNIQUE_BRANCHES[@]}"; do
-            commit="${DEV_COMMIT[${ENABLED_DEVICES[0]}]}"  # fallback
+            commit="${DEV_COMMIT[${ENABLED_DEVICES[0]}]}"
             for dev in "${ENABLED_DEVICES[@]}"; do
               if [ "${DEV_BRANCH[$dev]}" = "$branch" ]; then
                 commit="${DEV_COMMIT[$dev]}"
                 break
               fi
             done
-            grep -q "^${branch}=" "$TRACK_FILE" 2>/dev/null && \
-              sed -i "s|^${branch}=.*|${branch}=${commit}|" "$TRACK_FILE" || \
+            if awk -F= -v b="$branch" '$1 == b {exit 1}' "$TRACK_FILE" 2>/dev/null; then
               echo "${branch}=${commit}" >> "$TRACK_FILE"
+            else
+              sed -i "s|^${branch}=.*|${branch}=${commit}|" "$TRACK_FILE"
+            fi
           done
 
           if [ "${{ github.event_name }}" = "schedule" ] && [ "$ALL_MATCH" = true ]; then
