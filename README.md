@@ -69,23 +69,23 @@
 ```
 ├── .github/workflows/        # 各源码的编译工作流
 ├── config/
-│   ├── immortalwrt-mt798x/                    # 各设备编译配置 (按 设备名-时间戳 命名)
+│   ├── immortalwrt-mt798x/                    # 各设备编译配置 (按 芯片-设备名-时间戳 命名)
 │   ├── immortalwrt-mt798x-enable-configs.txt  # 启用编译的设备列表
 │   ├── immortalwrt-device-branch.txt          # 机型与源码分支对应表
 │   ├── immortalwrt-default-branch.txt         # 默认源码分支 (未匹配设备时使用)
 │   ├── immortalwrt-last-commit.txt            # 各分支上次编译时的远端提交 SHA
 │   ├── *-url.txt                              # 各源码仓库地址
-│   ├── *-banner*.txt                          # 自定义登录 banner
+│   ├── *-banner*.txt                          # LEDE 自定义登录 banner
 │   ├── x-wrt-config-tag.txt                   # X-Wrt 编译使用的 tag
 │   └── old_configs/                           # 历史配置存档
 └── script/
     ├── immortalwrt-actions-diy1.sh   # feeds update 前：克隆第三方插件
     ├── immortalwrt-actions-diy2.sh   # feeds update 后：替换 OpenClash
     ├── immortalwrt-switch-branch.sh  # 按机型切换源码分支
-    ├── immortalwrt-uci-defaults.sh   # uci-defaults: LAN IP, SSH 切换, mirrors.sh
-    ├── lede-github-actions-ip.sh      # LEDE: 修改默认管理 IP
-    ├── lede-github-actions-rl.sh      # LEDE: 生成 Release 说明
-    ├── x-wrt-actions-txt-001.sh       # X-Wrt: 生成 Release 说明
+    ├── immortalwrt-uci-defaults.sh    # uci-defaults: LAN IP, SSH 切换, mirrors.sh
+    ├── lede-github-actions-ip.sh     # LEDE: 修改默认管理 IP
+    ├── lede-github-actions-rl.sh     # LEDE: 生成 Release 说明
+    ├── x-wrt-actions-txt-001.sh      # X-Wrt: 生成 Release 说明
     ├── x-wrt-git-001.sh              # 替换 coremark 包
     ├── x-wrt-make-001.sh             # 预下载依赖并清理残缺包
     └── gitcj.py + giturl.txt         # 批量克隆第三方 luci 插件
