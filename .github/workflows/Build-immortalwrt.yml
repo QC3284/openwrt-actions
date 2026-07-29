@@ -452,6 +452,9 @@ jobs:
           EOF
           echo "build-info.txt 已生成"
 
+          # 输出成功摘要到 Actions 页面
+          echo "| ✅ ${{ matrix.device }} | ${{ matrix.chip }} | ${{ env.TARGET_NAME }} | $(date '+%H:%M:%S') |" >> $GITHUB_STEP_SUMMARY
+
       - name: 上传固件 Artifact (Upload Firmware Artifact)
         if: steps.compile.outputs.compile_completed == 'true'
         uses: actions/upload-artifact@v7.0.1
@@ -498,3 +501,21 @@ jobs:
           files: ${{ env.TARGET_DIR }}/*
           draft: false
           prerelease: false
+
+  summarize:
+    needs: [prepare, compile]
+    if: always() && needs.prepare.outputs.skip != 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: 输出编译摘要 (Build Summary)
+        run: |
+          if [ "${{ needs.compile.result }}" = "success" ]; then
+            echo "## 编译结果: ✅ 全部成功" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ needs.compile.result }}" = "failure" ]; then
+            echo "## 编译结果: ⚠️ 部分或全部设备编译失败" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## 编译结果: ${{ needs.compile.result }}" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "详细日志见各设备的 Artifact / Release。" >> $GITHUB_STEP_SUMMARY
+          echo "查看 Releases: ${{ github.server_url }}/${{ github.repository }}/releases" >> $GITHUB_STEP_SUMMARY
