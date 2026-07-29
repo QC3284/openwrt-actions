@@ -1,5 +1,8 @@
 # openwrt-actions
 
+[![Build ImmortalWrt](https://github.com/QC3284/openwrt-actions/actions/workflows/Build-immortalwrt.yml/badge.svg)](https://github.com/QC3284/openwrt-actions/actions/workflows/Build-immortalwrt.yml)
+[![Validate](https://github.com/QC3284/openwrt-actions/actions/workflows/Validate.yml/badge.svg)](https://github.com/QC3284/openwrt-actions/actions/workflows/Validate.yml)
+
 利用 GitHub Actions 自动编译 OpenWrt / ImmortalWrt / LEDE / X-Wrt 固件。
 
 > [!WARNING]

@@ -194,6 +194,37 @@ jobs:
             echo "compile_completed=false" >> $GITHUB_OUTPUT
           fi
 
+      # ---------- 编译失败处理 ----------
+      - name: 生成错误报告 (Generate Error Report)
+        if: steps.compile.outputs.compile_completed == 'false'
+        working-directory: ${{ env.OPENWRT_DIR }}
+        run: |
+          {
+            echo "## 编译失败 - ${{ inputs.device }}"
+            echo ""
+            echo "### 关键错误信息 (最后 50 条)"
+            echo '```'
+            grep -inE "error:|error [0-9]+|fatal|FAILED|collect2|No rule to make target|make\[[0-9]+\].*Error|Segmentation fault|undefined reference|No such file|cannot find|patch.*failed|Hunk.*FAILED" make.log | tail -50 || echo "未匹配到关键错误"
+            echo '```'
+            echo ""
+            echo "### 日志末尾 100 行"
+            echo '```'
+            tail -100 make.log
+            echo '```'
+          } > error_report.md
+          cat error_report.md >> $GITHUB_STEP_SUMMARY
+
+      - name: 上传失败日志 (Upload Failure Log)
+        if: steps.compile.outputs.compile_completed == 'false'
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: failed-build-log-${{ inputs.device }}-${{ github.run_id }}
+          path: |
+            ${{ env.OPENWRT_DIR }}/make.log
+            ${{ env.OPENWRT_DIR }}/error_report.md
+          retention-days: 7
+
+      # ---------- 编译成功处理 ----------
       - name: 压缩并整理固件 (Compress and Organize Firmware)
         if: steps.compile.outputs.compile_completed == 'true'
         working-directory: ${{ env.OPENWRT_DIR }}
@@ -246,6 +277,8 @@ jobs:
           - SHA256 checksums (sha256sums.txt)
           - Compilation log (make.log)
           EOF
+
+          echo "| ✅ ${{ inputs.device }} | ${{ env.TARGET_NAME }} | ${{ env.BUILD_BRANCH }} | $(date '+%H:%M:%S') |" >> $GITHUB_STEP_SUMMARY
 
       - name: 发布 Release (Create Release)
         if: steps.compile.outputs.compile_completed == 'true'

@@ -1,0 +1,92 @@
+# https://github.com/QC3284/openwrt-actions
+# File name: Validate.yml
+#
+# Copyright (c) 2026 QC3284 <https://www.xcqcoo.top>
+#
+# This is free software, licensed under the GNU GPLv3 License.
+# See /LICENSE for more information.
+
+name: 校验 (Validate)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/**'
+      - 'script/**'
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: 检出仓库 (Checkout Repository)
+        uses: actions/checkout@v7.0.1
+
+      - name: 校验 Shell 脚本语法 (Validate Shell Scripts)
+        run: |
+          echo "=== 检查 Shell 脚本语法 ==="
+          FAIL=0
+          for f in script/*.sh; do
+            if bash -n "$f" 2>&1; then
+              echo "  ✅ $(basename $f)"
+            else
+              echo "  ❌ $(basename $f)"
+              FAIL=1
+            fi
+          done
+          if [ $FAIL -ne 0 ]; then
+            echo "::error::Shell 脚本语法检查失败"
+            exit 1
+          fi
+          echo "全部通过"
+
+      - name: 校验 Python 脚本语法 (Validate Python Script)
+        run: |
+          for f in script/*.py; do
+            [ ! -f "$f" ] && continue
+            if python3 -m py_compile "$f" 2>&1; then
+              echo "  ✅ $(basename $f)"
+            else
+              echo "  ❌ $(basename $f)"
+              exit 1
+            fi
+          done
+
+      - name: 校验 Workflow YAML (Validate Workflows)
+        run: |
+          echo "=== 检查 Workflow YAML 语法 ==="
+          pip install pyyaml -q 2>/dev/null || true
+          FAIL=0
+          for f in .github/workflows/*.yml; do
+            if python3 -c "import yaml; yaml.safe_load(open('$f'))" 2>&1; then
+              echo "  ✅ $(basename $f)"
+            else
+              echo "  ❌ $(basename $f)"
+              FAIL=1
+            fi
+          done
+          if [ $FAIL -ne 0 ]; then
+            echo "::error::Workflow YAML 语法检查失败"
+            exit 1
+          fi
+          echo "全部通过"
+
+      - name: 校验配置文件 (Validate Config Files)
+        run: |
+          echo "=== 检查配置完整性 ==="
+          # 检查必需的配置文件是否存在
+          MISSING=0
+          for f in config/immortalwrt-url.txt config/immortalwrt-mt798x-enable-configs.txt config/immortalwrt-device-branch.txt; do
+            if [ -f "$f" ]; then
+              echo "  ✅ $f"
+            else
+              echo "  ❌ 缺少: $f"
+              MISSING=1
+            fi
+          done
+          if [ $MISSING -ne 0 ]; then
+            echo "::warning::部分配置文​​件缺失，编译工作流可能无法运行"
+          fi

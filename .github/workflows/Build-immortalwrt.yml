@@ -38,9 +38,8 @@ jobs:
       - name: 检查源码是否更新 (Check Source Updates)
         id: check-source
         run: |
-          SOURCE_URL=$(awk '{print $NF}' ${{ env.SOURCE_CODE_URL_FILE }})
-          DEFAULT_BRANCH=$(awk '{for(i=1;i<NF;i++) if($i=="-b") print $(i+1)}' ${{ env.SOURCE_CODE_URL_FILE }})
-          [ -z "$DEFAULT_BRANCH" ] && DEFAULT_BRANCH="25.12"
+          SOURCE_URL=$(cat ${{ env.SOURCE_CODE_URL_FILE }})
+          DEFAULT_BRANCH="25.12"
           echo "源码仓库: $SOURCE_URL"
           echo "默认分支: $DEFAULT_BRANCH"
 
@@ -519,3 +518,9 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "详细日志见各设备的 Artifact / Release。" >> $GITHUB_STEP_SUMMARY
           echo "查看 Releases: ${{ github.server_url }}/${{ github.repository }}/releases" >> $GITHUB_STEP_SUMMARY
+
+      - name: 清理旧 Release (Clean Old Releases)
+        uses: ophub/delete-releases-workflows@v0.1.0
+        with:
+          delete_releases: true
+          releases_keep_latest: 20
