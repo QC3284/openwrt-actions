@@ -38,7 +38,7 @@
 1. Fork 本仓库
 2. 编辑 `config/immortalwrt-mt798x-enable-configs.txt`，添加需要编译的设备名
 3. 将对应 `.config` 命名为 `immortalwrt-actions-<芯片>-<设备名>-<时间戳>.config` 放入 `config/immortalwrt-mt798x/`
-4. 如有非默认分支需求，编辑 `config/immortalwrt-device-branch.txt`
+4. 如需修改默认分支，编辑 `config/immortalwrt-default-branch.txt`；如需按设备指定分支，编辑 `config/immortalwrt-device-branch.txt`
 5. 在 Actions 页面手动触发 `Build-immortalwrt-single.yml` 测试单个设备
 6. 确认无误后，工作流将按定时自动执行
 
@@ -54,7 +54,7 @@
 1. **check-source**：定时触发时通过 `git ls-remote` 获取源码远端最新提交，与 `config/immortalwrt-last-commit.txt` 对比；若所有设备源码均未变更则跳过编译，手动触发不检查
 2. **prepare**：读取 `config/immortalwrt-mt798x-enable-configs.txt` 中启用的设备，在 `config/immortalwrt-mt798x/` 中按文件名时间戳自动选取每个设备最新的 `.config`，生成编译矩阵
 3. **compile**（矩阵并行，每设备独立 job）：
-   - 拉取源码后，通过 `script/immortalwrt-switch-branch.sh` 按 `config/immortalwrt-device-branch.txt` 切换设备对应分支（未配置则默认 `25.12`）
+   - 拉取源码后，通过 `script/immortalwrt-switch-branch.sh` 按 `config/immortalwrt-device-branch.txt` 切换设备对应分支（未配置则使用 `config/immortalwrt-default-branch.txt`，默认为 `25.12`）
    - 执行 DIY 脚本注入第三方插件，更新并安装 feeds
    - 打入 `files/etc/uci-defaults/99-custom.sh`（首次启动自动执行，见下文 uci-defaults）
    - 先 `make -j$(nproc+1)` 编译，失败自动回退 `make -j1 V=s` 定位错误
@@ -73,7 +73,7 @@
 │   ├── immortalwrt-device-branch.txt          # 机型与源码分支对应表
 │   ├── immortalwrt-default-branch.txt         # 默认源码分支 (未匹配设备时使用)
 │   ├── immortalwrt-last-commit.txt            # 各分支上次编译时的远端提交 SHA
-│   ├── *-url.txt                              # 各源码仓库地址 (含分支参数)
+│   ├── *-url.txt                              # 各源码仓库地址
 │   ├── *-banner*.txt                          # 自定义登录 banner
 │   ├── x-wrt-config-tag.txt                   # X-Wrt 编译使用的 tag
 │   └── old_configs/                           # 历史配置存档
@@ -81,9 +81,10 @@
     ├── immortalwrt-actions-diy1.sh   # feeds update 前：克隆第三方插件
     ├── immortalwrt-actions-diy2.sh   # feeds update 后：替换 OpenClash
     ├── immortalwrt-switch-branch.sh  # 按机型切换源码分支
-    ├── immortalwrt-uci-defaults.sh  # uci-defaults: LAN IP, SSH 切换, mirrors.sh
-    ├── *-ip.sh                       # 修改默认管理 IP (192.168.5.1)
-    ├── *-txt*.sh / *-rl.sh           # 生成 Release 说明
+    ├── immortalwrt-uci-defaults.sh   # uci-defaults: LAN IP, SSH 切换, mirrors.sh
+    ├── lede-github-actions-ip.sh      # LEDE: 修改默认管理 IP
+    ├── lede-github-actions-rl.sh      # LEDE: 生成 Release 说明
+    ├── x-wrt-actions-txt-001.sh       # X-Wrt: 生成 Release 说明
     ├── x-wrt-git-001.sh              # 替换 coremark 包
     ├── x-wrt-make-001.sh             # 预下载依赖并清理残缺包
     └── gitcj.py + giturl.txt         # 批量克隆第三方 luci 插件
