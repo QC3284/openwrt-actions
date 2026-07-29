@@ -31,7 +31,7 @@ jobs:
       skip: ${{ steps.check-source.outputs.skip }}
     steps:
       - name: 检出仓库 (Checkout Repository)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 1
 
@@ -220,7 +220,7 @@ jobs:
       CONFIG_FILE: ${{ matrix.config }}
     steps:
       - name: 检出仓库 (Checkout Repository)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 1
 
@@ -337,7 +337,7 @@ jobs:
 
       - name: 上传失败日志 (Upload Failure Log)
         if: steps.compile.outputs.compile_completed == 'false'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: failed-build-log-${{ matrix.device }}-${{ github.run_id }}
           path: |
@@ -442,7 +442,7 @@ jobs:
 
       - name: 上传固件 Artifact (Upload Firmware Artifact)
         if: steps.compile.outputs.compile_completed == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: openwrt-firmware-${{ matrix.device }}
           path: ${{ env.TARGET_DIR }}/
