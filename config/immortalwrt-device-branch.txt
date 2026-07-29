@@ -1,6 +1,6 @@
 # 机型与源码分支对应表
 # 格式: <设备名> <分支名>，以 # 开头为注释
-# 未列出的设备默认使用 25.12 分支
+# 未列出的设备使用 config/immortalwrt-default-branch.txt 中的默认分支
 glinet_gl-mt3000 25.12
 konka_komi-a31 25.12
 glinet_gl-mt3600be 25.12-dev-wifi7

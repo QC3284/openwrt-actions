@@ -14,7 +14,6 @@ echo "使用 $THREADS 线程下载依赖包..."
 
 make download -j$THREADS 2>&1 | tee make_download.log
 DOWNLOAD_EXIT=${PIPESTATUS[0]}
-sleep 2
 
 if [ $DOWNLOAD_EXIT -ne 0 ]; then
   echo "警告: make download 退出码 $DOWNLOAD_EXIT，部分包可能下载失败"
@@ -24,4 +23,3 @@ fi
 # 列出并删除小于 1KB 的文件 (通常为下载失败的残缺包)，以便编译时自动重新下载
 find dl -size -1024c -exec ls -l {} \; 2>/dev/null || true
 find dl -size -1024c -exec rm -f {} \; 2>/dev/null || true
-sleep 3
