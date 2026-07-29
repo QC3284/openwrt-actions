@@ -71,6 +71,7 @@
 │   ├── immortalwrt-mt798x/                    # 各设备编译配置 (按 设备名-时间戳 命名)
 │   ├── immortalwrt-mt798x-enable-configs.txt  # 启用编译的设备列表
 │   ├── immortalwrt-device-branch.txt          # 机型与源码分支对应表
+│   ├── immortalwrt-default-branch.txt         # 默认源码分支 (未匹配设备时使用)
 │   ├── immortalwrt-last-commit.txt            # 各分支上次编译时的远端提交 SHA
 │   ├── *-url.txt                              # 各源码仓库地址 (含分支参数)
 │   ├── *-banner*.txt                          # 自定义登录 banner

@@ -39,7 +39,12 @@ jobs:
         id: check-source
         run: |
           SOURCE_URL=$(cat ${{ env.SOURCE_CODE_URL_FILE }})
+          DEFAULT_BRANCH_FILE="${{ github.workspace }}/config/immortalwrt-default-branch.txt"
           DEFAULT_BRANCH="25.12"
+          if [ -f "$DEFAULT_BRANCH_FILE" ]; then
+            PARSED=$(head -1 "$DEFAULT_BRANCH_FILE" | tr -d '[:space:]')
+            [ -n "$PARSED" ] && DEFAULT_BRANCH="$PARSED"
+          fi
           echo "源码仓库: $SOURCE_URL"
           echo "默认分支: $DEFAULT_BRANCH"
 

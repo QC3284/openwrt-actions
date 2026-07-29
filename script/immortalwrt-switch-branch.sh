@@ -14,7 +14,13 @@ set -e
 DEVICE="${1:-$DEVICE_NAME}"
 REPO_DIR="${2:-${OPENWRT_DIR:-.}}"
 BRANCH_FILE="${3:-$(dirname "$0")/../config/immortalwrt-device-branch.txt}"
+DEFAULT_BRANCH_FILE="${4:-$(dirname "$0")/../config/immortalwrt-default-branch.txt}"
 DEFAULT_BRANCH="25.12"
+if [ -f "$DEFAULT_BRANCH_FILE" ]; then
+  PARSED=$(head -1 "$DEFAULT_BRANCH_FILE" | tr -d '[:space:]')
+  [ -n "$PARSED" ] && DEFAULT_BRANCH="$PARSED"
+fi
+echo "默认分支: $DEFAULT_BRANCH"
 
 if [ -z "$DEVICE" ]; then
   echo "错误: 未指定设备名 (参数1 或环境变量 DEVICE_NAME)"

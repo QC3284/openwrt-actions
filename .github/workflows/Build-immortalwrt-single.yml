@@ -53,7 +53,12 @@ jobs:
           CONFIG_OVERRIDE="${{ inputs.config }}"
           CONFIG_DIR="${{ github.workspace }}/config/immortalwrt-mt798x"
           BRANCH_FILE="${{ github.workspace }}/config/immortalwrt-device-branch.txt"
+          DEFAULT_BRANCH_FILE="${{ github.workspace }}/config/immortalwrt-default-branch.txt"
           DEFAULT_BRANCH="25.12"
+          if [ -f "$DEFAULT_BRANCH_FILE" ]; then
+            PARSED=$(head -1 "$DEFAULT_BRANCH_FILE" | tr -d '[:space:]')
+            [ -n "$PARSED" ] && DEFAULT_BRANCH="$PARSED"
+          fi
 
           # 确定配置文件
           if [ -n "$CONFIG_OVERRIDE" ]; then
