@@ -18,10 +18,11 @@
 | `Build-openwrt.yml` | [openwrt/openwrt](https://git.openwrt.org/openwrt/openwrt.git) | ⛔ 停止更新 | 编译官方 OpenWrt (main 分支) |
 | `Build-X-wrt.yml` | [x-wrt/x-wrt](https://github.com/x-wrt/x-wrt) | ⛔ 停止更新 | 按指定 tag 编译 X-Wrt |
 | `Clean-old-configs.yml` | — | ✅ 维护中 | 每周日清理旧配置，每设备仅保留最新 |
+| `Validate.yml` | — | ✅ 维护中 | PR/推送时自动校验 Shell/Python/YAML/配置文件 |
 
-所有工作流均支持定时触发（每周三、六 03:00 北京时间）、手动触发 (workflow_dispatch) 和 repository_dispatch。
-`Clean-old-configs.yml` 每周日 23:00（北京时间）执行。
-`Build-immortalwrt-single.yml` 仅支持手动触发，可指定设备名、分支和配置文件。
+`Build-immortalwrt.yml` 定时触发：每周三、六 03:00（北京时间），同时支持手动触发 (`workflow_dispatch` / `repository_dispatch`)。
+`Clean-old-configs.yml` 定时触发：每周日 23:00（北京时间），同时支持手动触发。
+`Build-immortalwrt-single.yml` 仅手动触发，可指定设备名、分支和配置文件。
 
 ### 当前编译设备
 
@@ -40,7 +41,7 @@
 3. 将对应 `.config` 命名为 `immortalwrt-actions-<芯片>-<设备名>-<时间戳>.config` 放入 `config/immortalwrt-mt798x/`
 4. 如需修改默认分支，编辑 `config/immortalwrt-default-branch.txt`；如需按设备指定分支，编辑 `config/immortalwrt-device-branch.txt`
 5. 在 Actions 页面手动触发 `Build-immortalwrt-single.yml` 测试单个设备
-6. 确认无误后，工作流将按定时自动执行
+6. 确认无误后，`Build-immortalwrt.yml` 将按定时自动执行编译
 
 ### 单设备快速测试
 
@@ -96,7 +97,7 @@
 
 1. 将 `.config` 命名为 `immortalwrt-actions-<芯片型号>-<设备名>-<YYYYMMDDHHMMSS>.config`（如 `immortalwrt-actions-mt7981-glinet_gl-mt3000-20260710202710.config`）放入 `config/immortalwrt-mt798x/`
 2. 在 `config/immortalwrt-mt798x-enable-configs.txt` 中添加设备名（每行一个，`#` 为注释）
-3. 如需非默认分支，在 `config/immortalwrt-device-branch.txt` 中添加 `<设备名> <分支名>`
+3. 如需非默认分支，在 `config/immortalwrt-device-branch.txt` 中添加 `<设备名> <分支名>`；要修改全局默认分支则编辑 `config/immortalwrt-default-branch.txt`
 
 工作流会自动选取每个设备时间戳最新的配置文件。
 
