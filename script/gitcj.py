@@ -1,54 +1,49 @@
 import subprocess
 import os
+import re
 
-# 定义一个函数来执行shell命令
-def run_command(command):
+# 安全地克隆 git 仓库 (不使用 shell=True，防止命令注入)
+def git_clone(url, depth=1):
+    if not re.match(r'^https://[a-zA-Z0-9._/\-:@]+$', url):
+        print(f"警告: 不安全的 URL 格式，已跳过: {url}")
+        return False
+    cmd = ["git", "clone", "--depth", str(depth), url]
     try:
-        subprocess.run(command, check=True, shell=True)
-    except subprocess.CalledProcessError as e:
-        print(f"An error occurred: {e}")
+        subprocess.run(cmd, check=True)
+        return True
+    except subprocess.CalledProcessError:
+        return False
 
-# 读取giturl.txt文件中的链接并克隆仓库
+# 读取 giturl.txt 中的链接并安全克隆仓库
 def clone_repositories(file_path):
+    if not os.path.isfile(file_path):
+        print(f"文件不存在: {file_path}")
+        return
     try:
-        with open(file_path, 'r') as file:
-            for line in file:
-                # 去除行尾的换行符并执行git clone命令
-                repo_url = line.strip()
-                if repo_url:
-                    run_command(f"git clone {repo_url}")
-    except FileNotFoundError:
-        print(f"The file {file_path} was not found.")
+        with open(file_path, 'r') as f:
+            for line in f:
+                url = line.strip()
+                if url and not url.startswith('#'):
+                    ok = git_clone(url)
+                    if not ok:
+                        print(f"克隆失败 (已跳过): {url}")
     except Exception as e:
-        print(f"An error occurred: {e}")
+        print(f"读取文件出错: {e}")
 
-# 等待3秒的函数
-def sleep(seconds):
-    import time
-    time.sleep(seconds)
-
-# 删除文件的函数
-def delete_file(file_path):
-    try:
-        os.remove(file_path)
-        print(f"File {file_path} has been deleted successfully.")
-    except FileNotFoundError:
-        print(f"The file {file_path} was not found.")
-    except Exception as e:
-        print(f"Failed to delete the file {file_path}: {e}")
-
-# 主程序
 if __name__ == "__main__":
-    # 克隆GitHub仓库
     clone_repositories("giturl.txt")
-    
-    # 等待3秒
-    sleep(3)
 
-    # 获取当前脚本的路径和giturl.txt的路径
+    import time
+    time.sleep(3)
+
     script_path = os.path.realpath(__file__)
     giturl_path = os.path.join(os.path.dirname(script_path), "giturl.txt")
 
-    # 删除脚本和giturl.txt文件
-    delete_file(script_path)
-    delete_file(giturl_path)
+    for path in (script_path, giturl_path):
+        try:
+            os.remove(path)
+            print(f"已删除: {path}")
+        except FileNotFoundError:
+            pass
+        except Exception as e:
+            print(f"删除失败: {path} - {e}")

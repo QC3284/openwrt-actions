@@ -10,6 +10,7 @@
 | 工作流 | 源码 | 状态 | 说明 |
 | --- | --- | --- | --- |
 | `Build-immortalwrt.yml` | [immortalwrt-mt798x-rebase](https://github.com/chasey-dev/immortalwrt-mt798x-rebase) | ✅ 维护中 | 多设备矩阵并行编译 (MT798x 系列)，含失败处理 |
+| `Build-immortalwrt-single.yml` | [immortalwrt-mt798x-rebase](https://github.com/chasey-dev/immortalwrt-mt798x-rebase) | ✅ 维护中 | 单设备手动编译，支持指定分支和配置文件 |
 | `Build-lede.yml` | [coolsnowwolf/lede](https://github.com/coolsnowwolf/lede) | ⛔ 停止更新 | 编译 LEDE |
 | `Build-openwrt.yml` | [openwrt/openwrt](https://git.openwrt.org/openwrt/openwrt.git) | ⛔ 停止更新 | 编译官方 OpenWrt (main 分支) |
 | `Build-X-wrt.yml` | [x-wrt/x-wrt](https://github.com/x-wrt/x-wrt) | ⛔ 停止更新 | 按指定 tag 编译 X-Wrt |
@@ -17,6 +18,7 @@
 
 所有工作流均支持定时触发（每周三、六 03:00 北京时间）、手动触发 (workflow_dispatch) 和 repository_dispatch。
 `Clean-old-configs.yml` 每周日 23:00（北京时间）执行。
+`Build-immortalwrt-single.yml` 仅支持手动触发，可指定设备名、分支和配置文件。
 
 ## ImmortalWrt 编译流程
 

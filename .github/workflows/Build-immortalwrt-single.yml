@@ -1,0 +1,259 @@
+# https://github.com/QC3284/openwrt-actions
+# File name: Build-immortalwrt-single.yml
+#
+# Copyright (c) 2026 QC3284 <https://www.xcqcoo.top>
+#
+# This is free software, licensed under the GNU GPLv3 License.
+# See /LICENSE for more information.
+
+name: 编译 ImmortalWrt 单设备 (Single Device Build)
+
+on:
+  workflow_dispatch:
+    inputs:
+      device:
+        description: '设备名 (如 glinet_gl-mt3000)'
+        required: true
+        type: string
+      branch:
+        description: '源码分支 (留空则使用配置文件中的分支，默认 25.12)'
+        required: false
+        type: string
+        default: ''
+      config:
+        description: '配置文件路径 (留空则自动选取最新)'
+        required: false
+        type: string
+        default: ''
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}
+  cancel-in-progress: ${{ github.event_name == 'schedule' }}
+
+env:
+  TZ: Asia/Shanghai
+  OPENWRT_DIR: /workdir/openwrt
+  SOURCE_CODE_URL_FILE: ${{ github.workspace }}/config/immortalwrt-url.txt
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    steps:
+      - name: 检出仓库 (Checkout Repository)
+        uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 1
+
+      - name: 解析参数 (Parse Inputs)
+        id: parse
+        run: |
+          DEVICE="${{ inputs.device }}"
+          BRANCH_OVERRIDE="${{ inputs.branch }}"
+          CONFIG_OVERRIDE="${{ inputs.config }}"
+          CONFIG_DIR="${{ github.workspace }}/config/immortalwrt-mt798x"
+          BRANCH_FILE="${{ github.workspace }}/config/immortalwrt-device-branch.txt"
+          DEFAULT_BRANCH="25.12"
+
+          # 确定配置文件
+          if [ -n "$CONFIG_OVERRIDE" ]; then
+            if [ -f "$CONFIG_OVERRIDE" ]; then
+              CONFIG_FILE="$CONFIG_OVERRIDE"
+            elif [ -f "$CONFIG_DIR/$CONFIG_OVERRIDE" ]; then
+              CONFIG_FILE="$CONFIG_DIR/$CONFIG_OVERRIDE"
+            else
+              echo "::error::指定的配置文件不存在: $CONFIG_OVERRIDE"
+              exit 1
+            fi
+          else
+            # 自动选取该设备最新的配置文件
+            LATEST_DATETIME=""
+            while IFS= read -r -d '' file; do
+              filename=$(basename "$file")
+              if [[ "$filename" =~ ^immortalwrt-actions-([a-z0-9]+)-(.+)-([0-9]{14})\.config$ ]]; then
+                dev="${BASH_REMATCH[2]}"
+                dt="${BASH_REMATCH[3]}"
+                if [ "$dev" = "$DEVICE" ] && [ "$dt" \> "$LATEST_DATETIME" ] 2>/dev/null; then
+                  CONFIG_FILE="$file"
+                  LATEST_DATETIME="$dt"
+                fi
+              fi
+            done < <(find "$CONFIG_DIR" -maxdepth 1 -type f -name "immortalwrt-actions-*.config" -print0)
+            if [ -z "$CONFIG_FILE" ]; then
+              echo "::error::未找到设备 [$DEVICE] 的配置文件"
+              exit 1
+            fi
+          fi
+          echo "设备: $DEVICE"
+          echo "配置: $CONFIG_FILE"
+
+          # 确定分支
+          if [ -n "$BRANCH_OVERRIDE" ]; then
+            BRANCH="$BRANCH_OVERRIDE"
+            echo "分支 (手动): $BRANCH"
+          else
+            BRANCH="$DEFAULT_BRANCH"
+            if [ -f "$BRANCH_FILE" ]; then
+              MATCH=$(grep -v '^[[:space:]]*#' "$BRANCH_FILE" | awk -v d="$DEVICE" '$1 == d {print $2; exit}')
+              [ -n "$MATCH" ] && BRANCH="$MATCH"
+            fi
+            echo "分支 (配置): $BRANCH"
+          fi
+
+          echo "DEVICE_NAME=$DEVICE" >> $GITHUB_ENV
+          echo "CONFIG_FILE=$CONFIG_FILE" >> $GITHUB_ENV
+          echo "BUILD_BRANCH=$BRANCH" >> $GITHUB_ENV
+
+      - name: 设置系统时区 (Set System Timezone)
+        run: |
+          sudo timedatectl set-timezone "$TZ"
+          date
+
+      - name: 创建工作目录 (Create Work Directory)
+        run: |
+          sudo mkdir -p /workdir
+          sudo chown $USER:$GROUPS /workdir
+
+      - name: 释放磁盘空间 (Free Disk Space)
+        uses: jlumbroso/free-disk-space@v1.3.1
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
+
+      - name: 安装必要软件包 (Install Necessary Packages)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential ecj fastjar file flex g++ gcc-multilib g++-multilib gawk gettext git git-core \
+            java-propose-classpath libelf-dev libncurses5-dev libncursesw5-dev libssl-dev swig python3 \
+            python3-pip python3-dev python3-setuptools python3-pyelftools subversion unzip wget zlib1g-dev \
+            rsync qemu-utils zip libfuse-dev neofetch p7zip-full curl device-tree-compiler gperf haveged \
+            help2man intltool lib32gcc-s1 libc6-dev-i386 libglib2.0-dev libgmp3-dev libltdl-dev libmpc-dev \
+            libmpfr-dev libncurses-dev libpython3-dev libreadline-dev libtool libyaml-dev libz-dev lld llvm \
+            lrzsz mkisofs msmtp nano ninja-build p7zip patch pkgconf python3-ply python3-docutils re2c \
+            scons squashfs-tools texinfo uglifyjs upx-ucl vim xmlto xxd zstd
+          pip install requests tqdm
+
+      - name: 拉取源码 (Pull Source Code)
+        working-directory: /workdir
+        run: |
+          git clone $(cat ${{ env.SOURCE_CODE_URL_FILE }} | awk '{print $NF}') openwrt
+
+      - name: 链接源码目录 (Link Source Code Directory)
+        run: |
+          ln -sf ${{ env.OPENWRT_DIR }} ${{ github.workspace }}/openwrt
+
+      - name: 切换源码分支 (Switch Source Branch)
+        run: |
+          cd ${{ env.OPENWRT_DIR }}
+          git fetch origin "$BUILD_BRANCH"
+          git checkout -B "$BUILD_BRANCH" "origin/$BUILD_BRANCH"
+          git reset --hard "origin/$BUILD_BRANCH"
+          echo "当前分支: $(git branch --show-current)"
+
+      - name: 更新并安装 Feeds (Update and Install Feeds)
+        working-directory: ${{ env.OPENWRT_DIR }}
+        run: |
+          bash ${{ github.workspace }}/script/immortalwrt-actions-diy1.sh
+          ./scripts/feeds update -a
+          bash ${{ github.workspace }}/script/immortalwrt-actions-diy2.sh
+          ./scripts/feeds install -a
+
+      - name: 准备配置文件 (Prepare Config File)
+        working-directory: ${{ env.OPENWRT_DIR }}
+        run: |
+          cp "${{ env.CONFIG_FILE }}" .config
+          make defconfig
+          mkdir -p files/etc/uci-defaults
+          cp ${{ github.workspace }}/script/immortalwrt-uci-defaults.sh files/etc/uci-defaults/99-custom.sh
+          bash ${{ github.workspace }}/script/x-wrt-make-001.sh
+
+      - name: 编译固件 (Compile Firmware)
+        id: compile
+        working-directory: ${{ env.OPENWRT_DIR }}
+        run: |
+          THREAD_COUNT=$(($(nproc) + 1))
+          echo "使用 $THREAD_COUNT 线程编译"
+          make -j$THREAD_COUNT 2>&1 | tee make.log
+          EXIT_CODE=${PIPESTATUS[0]}
+          if [ $EXIT_CODE -ne 0 ]; then
+            echo "多线程编译失败，切换单线程详细模式..."
+            make -j1 V=s 2>&1 | tee -a make.log
+            EXIT_CODE=${PIPESTATUS[0]}
+          fi
+          if [ $EXIT_CODE -eq 0 ]; then
+            echo "编译成功完成！"
+            echo "compile_completed=true" >> $GITHUB_OUTPUT
+          else
+            echo "编译失败，退出码: $EXIT_CODE"
+            echo "compile_completed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: 压缩并整理固件 (Compress and Organize Firmware)
+        if: steps.compile.outputs.compile_completed == 'true'
+        working-directory: ${{ env.OPENWRT_DIR }}
+        run: |
+          TARGET_PATH=$(find bin/targets -mindepth 2 -maxdepth 2 -type d | head -n 1)
+          [ -z "$TARGET_PATH" ] && { echo "::error::未找到编译输出目录"; exit 1; }
+          TARGET_NAME="${TARGET_PATH#bin/targets/}"
+          echo "输出目录: $TARGET_PATH"
+          7z a -mx=9 -mmt=$(nproc) bin.7z bin/
+          mv bin.7z "$TARGET_PATH/"
+          mv make.log "$TARGET_PATH/"
+          cd "$TARGET_PATH"
+          rm -rf packages
+          ls -la *.bin *.img *.trx *.chk *.sys *.rom *.fit *.itb *.7z *.log 2>/dev/null || true
+          echo "TARGET_DIR=${{ env.OPENWRT_DIR }}/$TARGET_PATH" >> $GITHUB_ENV
+          echo "TARGET_NAME=$TARGET_NAME" >> $GITHUB_ENV
+          FIRMWARE_FILES=$(ls *.bin *.img *.trx *.chk *.sys *.rom *.fit *.itb 2>/dev/null)
+          [ -n "$FIRMWARE_FILES" ] && sha256sum $FIRMWARE_FILES > sha256sums.txt
+
+      - name: 上传固件 Artifact (Upload Firmware Artifact)
+        if: steps.compile.outputs.compile_completed == 'true'
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: openwrt-firmware-${{ inputs.device }}
+          path: ${{ env.TARGET_DIR }}/
+          retention-days: 30
+
+      - name: 生成 Release 信息 (Generate Release Info)
+        if: steps.compile.outputs.compile_completed == 'true'
+        id: release
+        run: |
+          BUILD_DATETIME=$(date +"%Y%m%d%H%M")
+          RELEASE_TAG="${{ inputs.device }}-single-${BUILD_DATETIME}-${{ github.run_id }}"
+          echo "release_tag=$RELEASE_TAG" >> $GITHUB_OUTPUT
+          echo "BUILD_DATETIME=$BUILD_DATETIME" >> $GITHUB_ENV
+
+          SOURCE_COMMIT=$(cd ${{ env.OPENWRT_DIR }} && git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+          cat > release.txt << EOF
+          ImmortalWRT Single Build for ${{ inputs.device }}
+          ==========================================
+          Build Date:    $(date '+%Y-%m-%d %H:%M:%S %Z')
+          Device:        ${{ inputs.device }}
+          Target:        ${{ env.TARGET_NAME }}
+          Source Branch: ${{ env.BUILD_BRANCH }}
+          Source Commit: ${SOURCE_COMMIT}
+
+          Included Files:
+          - Firmware images (factory/sysupgrade)
+          - Full bin.7z (complete bin directory)
+          - SHA256 checksums (sha256sums.txt)
+          - Compilation log (make.log)
+          EOF
+
+      - name: 发布 Release (Create Release)
+        if: steps.compile.outputs.compile_completed == 'true'
+        uses: softprops/action-gh-release@v3.0.2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.release.outputs.release_tag }}
+          name: "ImmortalWRT ${{ inputs.device }} (手动) - ${{ env.BUILD_DATETIME }}"
+          body_path: release.txt
+          files: ${{ env.TARGET_DIR }}/*
