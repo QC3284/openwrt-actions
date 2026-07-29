@@ -317,7 +317,7 @@ jobs:
         echo "Source: https://git.openwrt.org/openwrt/openwrt.git" >> release.txt
 
     - name: 发布固件 (Release Firmware)
-      uses: softprops/action-gh-release@v3
+      uses: softprops/action-gh-release@v3.0.2
       if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
