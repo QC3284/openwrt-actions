@@ -24,7 +24,7 @@
 `Clean-old-configs.yml` 定时触发：每周日 23:00（北京时间），同时支持手动触发。
 `Build-immortalwrt-single.yml` 仅手动触发，可指定设备名、分支和配置文件。
 
-### 当前编译设备
+### 当前编译设备 (ImmortalWrt)
 
 | 设备 | 芯片 | 分支 |
 |------|------|------|
@@ -34,7 +34,7 @@
 
 ## 快速开始 (Quick Start)
 
-### 首次使用
+### 首次使用 (ImmortalWrt)
 
 1. Fork 本仓库
 2. 编辑 `config/immortalwrt-mt798x-enable-configs.txt`，添加需要编译的设备名
@@ -43,7 +43,7 @@
 5. 在 Actions 页面手动触发 `Build-immortalwrt-single.yml` 测试单个设备
 6. 确认无误后，`Build-immortalwrt.yml` 将按定时自动执行编译
 
-### 单设备快速测试
+### 单设备快速测试 (ImmortalWrt)
 
 在 Actions 页面选择 `Build-immortalwrt-single.yml` → Run workflow：
 - `device`：输入设备名（如 `glinet_gl-mt3000`）
@@ -65,6 +65,8 @@
    - make.log 超过 10 万行时自动截断为首尾各 3000 行，避免上传失败
 
 ## 目录结构
+
+> 注：包含全部 4 个固件的工作流脚本和配置，其中 `immortalwrt-*` 前缀为 ImmortalWrt 专用，`lede-*` / `x-wrt-*` 为对应停更工作流的遗留文件。
 
 ```
 ├── .github/workflows/        # 各源码的编译工作流
@@ -91,9 +93,9 @@
     └── gitcj.py + giturl.txt         # 批量克隆第三方 luci 插件
 ```
 
-## 常用操作
+## 常用操作 (ImmortalWrt)
 
-### 新增/更新设备配置 (ImmortalWrt)
+### 新增/更新设备配置
 
 1. 将 `.config` 命名为 `immortalwrt-actions-<芯片型号>-<设备名>-<YYYYMMDDHHMMSS>.config`（如 `immortalwrt-actions-mt7981-glinet_gl-mt3000-20260710202710.config`）放入 `config/immortalwrt-mt798x/`
 2. 在 `config/immortalwrt-mt798x-enable-configs.txt` 中添加设备名（每行一个，`#` 为注释）
@@ -101,7 +103,7 @@
 
 工作流会自动选取每个设备时间戳最新的配置文件。
 
-### 停用某个设备
+### 停用某个设备 (ImmortalWrt)
 
 在 `config/immortalwrt-mt798x-enable-configs.txt` 中删除或注释对应行即可，无需删除配置文件。
 
