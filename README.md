@@ -20,6 +20,24 @@
 `Clean-old-configs.yml` 每周日 23:00（北京时间）执行。
 `Build-immortalwrt-single.yml` 仅支持手动触发，可指定设备名、分支和配置文件。
 
+## 快速开始 (Quick Start)
+
+### 首次使用
+
+1. Fork 本仓库
+2. 编辑 `config/immortalwrt-mt798x-enable-configs.txt`，添加需要编译的设备名
+3. 将对应 `.config` 命名为 `immortalwrt-actions-<芯片>-<设备名>-<时间戳>.config` 放入 `config/immortalwrt-mt798x/`
+4. 如有非默认分支需求，编辑 `config/immortalwrt-device-branch.txt`
+5. 在 Actions 页面手动触发 `Build-immortalwrt-single.yml` 测试单个设备
+6. 确认无误后，工作流将按定时自动执行
+
+### 单设备快速测试
+
+在 Actions 页面选择 `Build-immortalwrt-single.yml` → Run workflow：
+- `device`：输入设备名（如 `glinet_gl-mt3000`）
+- `branch`：留空使用配置文件中的分支，或手动指定（如 `25.12-dev-wifi7`）
+- `config`：留空自动选取最新，或手动指定文件名
+
 ## ImmortalWrt 编译流程
 
 1. **check-source**：定时触发时通过 `git ls-remote` 获取源码远端最新提交，与 `config/immortalwrt-last-commit.txt` 对比；若所有设备源码均未变更则跳过编译，手动触发不检查

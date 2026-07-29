@@ -304,17 +304,17 @@ jobs:
     - name: 生成发布标签 (Generate Release Tags)
       id: tag
       run: |
-        RELEASE_TAG=$(date +"%Y.%m.%d-%H%M")-immortalwrt
+        RELEASE_TAG=$(date +"%Y.%m.%d-%H%M")-openwrt
         echo "release_tag=$RELEASE_TAG" >> $GITHUB_OUTPUT
         echo "Generated release tag: $RELEASE_TAG"
 
         touch release.txt
-        echo "ImmortalWRT Build - $RELEASE_TAG" > release.txt
+        echo "OpenWrt Build - $RELEASE_TAG" > release.txt
         echo "Built on: $(date)" >> release.txt
         echo "Device: ${{ env.DEVICE_NAME }}" >> release.txt
         echo "Target: mediatek/filogic" >> release.txt
-
-        bash ${{ github.workspace }}/script/immortalwrt-actions-txt.sh >> release.txt
+        echo "" >> release.txt
+        echo "Source: https://git.openwrt.org/openwrt/openwrt.git" >> release.txt
 
     - name: 发布固件 (Release Firmware)
       uses: softprops/action-gh-release@v3
@@ -323,7 +323,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         tag_name: ${{ steps.tag.outputs.release_tag }}
-        name: "ImmortalWRT Build ${{ steps.tag.outputs.release_tag }}"
+        name: "OpenWrt Build ${{ steps.tag.outputs.release_tag }}"
         body_path: release.txt
         files: ${{ env.FIRMWARE }}/*
         draft: false
