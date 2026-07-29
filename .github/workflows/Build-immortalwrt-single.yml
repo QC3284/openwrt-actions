@@ -247,7 +247,7 @@ jobs:
 
           # 给固件文件名追加时间戳
           TS_SUFFIX="_$(date +%Y%m%d%H%M)"
-          for f in *.bin *.img *.trx *.chk *.sys *.rom *.fit *.itb 2>/dev/null; do
+          for f in *.bin *.img *.trx *.chk *.sys *.rom *.fit *.itb; do
             [ -f "$f" ] || continue
             base="${f%.*}"
             ext="${f##*.}"
