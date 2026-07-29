@@ -124,9 +124,11 @@
 
 ## 固件默认信息 (ImmortalWrt)
 
+以下信息由 `uci-defaults` 脚本在首次启动时自动配置：
+
 - 管理地址：`192.168.5.1/24`
-- 账号/密码：`root` / 无密码
-- SSH：`openssh-server` 已启用（允许 root 密码登录），`dropbear` 已禁用（LuCI 状态同步）
+- 账号/密码：`root` / 无密码（首次登录后请设置密码）
+- SSH：若编译时选中 `openssh-server`，则自动启用 sshd 并禁用 dropbear、允许 root 密码登录；否则保持 dropbear 不变
 - LuCI：默认启用，通过 `http://192.168.5.1` 访问
 
 ## 许可证
