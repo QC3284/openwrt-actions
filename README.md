@@ -5,7 +5,7 @@
 
 利用 GitHub Actions 自动编译 OpenWrt / ImmortalWrt / LEDE / X-Wrt 固件。
 
-基于 GitHub Actions 的 OpenWrt 系固件持续集成项目，支持多设备矩阵并行编译、源码变更自动检测、编译失败诊断报告、固件校验、首次启动自动配置（LAN IP / SSH 切换 / 软件源替换）等功能。当前主要维护 **ImmortalWrt**（MT798x 系列），每月自动编译 8 次。
+基于 GitHub Actions 的 OpenWrt 系固件持续集成项目，支持多设备矩阵并行编译、源码变更自动检测、编译失败诊断报告、固件校验、首次启动自动配置（LAN IP / SSH 切换 / 软件源替换）等功能。当前主要维护 **ImmortalWrt**（MT798x 系列），每周三和周六定时自动编译。
 
 > [!WARNING]
 > 目前仅 **ImmortalWrt** 工作流处于积极维护中，其余工作流（LEDE / OpenWrt / X-Wrt）已停止更新，仍可运行但可能存在未知问题，请谨慎使用。
