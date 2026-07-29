@@ -79,7 +79,7 @@ jobs:
           echo "=== 检查配置完整性 ==="
           # 检查必需的配置文件是否存在
           MISSING=0
-          for f in config/immortalwrt-url.txt config/immortalwrt-mt798x-enable-configs.txt config/immortalwrt-device-branch.txt; do
+          for f in config/immortalwrt-url.txt config/immortalwrt-mt798x-enable-configs.txt config/immortalwrt-device-branch.txt config/immortalwrt-default-branch.txt config/immortalwrt-last-commit.txt; do
             if [ -f "$f" ]; then
               echo "  ✅ $f"
             else
@@ -88,5 +88,5 @@ jobs:
             fi
           done
           if [ $MISSING -ne 0 ]; then
-            echo "::warning::部分配置文​​件缺失，编译工作流可能无法运行"
+            echo "::warning::部分配置文件缺失，编译工作流可能无法运行"
           fi

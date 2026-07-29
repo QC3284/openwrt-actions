@@ -5,7 +5,7 @@ https://github.com/derisamedia/luci-app-alpha-config.git
 https://github.com/sirpdboy/luci-app-netdata.git
 https://github.com/animegasan/luci-app-wolplus.git
 https://github.com/sirpdboy/luci-app-eqosplus.git
-https://github.com/sirpdboy/luci-app-lucky.git lucky
+https://github.com/sirpdboy/luci-app-lucky.git
 https://github.com/f8q8/luci-app-filetransfer.git
-https://github.com/kingyond/luci-app-accesscontrol-plus.git accesscontrol-plus
+https://github.com/kingyond/luci-app-accesscontrol-plus.git
 https://github.com/gSpotx2f/luci-app-cpu-status.git
