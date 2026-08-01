@@ -57,7 +57,6 @@ fi
 
 git fetch origin "$BRANCH"
 git checkout -B "$BRANCH" "origin/$BRANCH"
-git reset --hard "origin/$BRANCH"
 
 echo "当前分支: $(git branch --show-current)"
 

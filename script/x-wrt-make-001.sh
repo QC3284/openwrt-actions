@@ -12,7 +12,7 @@ set -o pipefail
 THREADS=$(nproc 2>/dev/null || echo 8)
 echo "使用 $THREADS 线程下载依赖包..."
 
-make download -j$THREADS 2>&1 | tee make_download.log
+make download -j$THREADS 2>&1 | tee make_download.log || true
 DOWNLOAD_EXIT=${PIPESTATUS[0]}
 
 if [ $DOWNLOAD_EXIT -ne 0 ]; then
