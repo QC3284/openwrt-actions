@@ -3,6 +3,8 @@
 [![Build ImmortalWrt](https://github.com/QC3284/openwrt-actions/actions/workflows/Build-immortalwrt.yml/badge.svg)](https://github.com/QC3284/openwrt-actions/actions/workflows/Build-immortalwrt.yml)
 [![Validate](https://github.com/QC3284/openwrt-actions/actions/workflows/Validate.yml/badge.svg)](https://github.com/QC3284/openwrt-actions/actions/workflows/Validate.yml)
 
+> [English](README_EN.md)
+
 基于 GitHub Actions 的 OpenWrt 系固件持续集成项目，支持多设备矩阵并行编译、源码变更自动检测、编译失败诊断报告、固件校验、首次启动自动配置（LAN IP / SSH 切换 / 软件源替换）等功能。
 
 > [!WARNING]
