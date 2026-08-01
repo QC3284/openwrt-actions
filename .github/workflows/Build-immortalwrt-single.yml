@@ -326,7 +326,7 @@ jobs:
           Source Commit: ${SOURCE_COMMIT}
 
           Included Files:
-          - Firmware images (sysupgrade / factory / preloader / BL2 / U-Boot / FIP)
+          - Firmware images (factory/sysupgrade)
           - Full bin.7z (complete bin directory)
           - SHA256 checksums (sha256sums.txt)
           - Compilation log (make.log)
