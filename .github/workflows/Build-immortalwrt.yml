@@ -539,8 +539,10 @@ jobs:
           Source Code: $(cat ${{ env.SOURCE_CODE_URL_FILE }})
 
           Included Files:
+          - Firmware images (sysupgrade / factory / preloader / BL2 / U-Boot / FIP)
           - Full bin.7z (complete bin directory compressed)
-          - Firmware images (factory/sysupgrade)
+          - SHA256 checksums (sha256sums.txt)
+          - Build info (build-info.txt)
           - Compilation log (make.log)
           EOF
 
@@ -564,16 +566,28 @@ jobs:
     steps:
       - name: 输出编译摘要 (Build Summary)
         run: |
-          if [ "${{ needs.compile.result }}" = "success" ]; then
-            echo "## 编译结果: ✅ 全部成功" >> $GITHUB_STEP_SUMMARY
-          elif [ "${{ needs.compile.result }}" = "failure" ]; then
-            echo "## 编译结果: ⚠️ 部分或全部设备编译失败" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "## 编译结果: ${{ needs.compile.result }}" >> $GITHUB_STEP_SUMMARY
-          fi
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "详细日志见各设备的 Artifact / Release。" >> $GITHUB_STEP_SUMMARY
-          echo "查看 Releases: ${{ github.server_url }}/${{ github.repository }}/releases" >> $GITHUB_STEP_SUMMARY
+          NOW=$(date '+%Y-%m-%d %H:%M:%S')
+          {
+            echo "# ImmortalWrt 编译报告"
+            echo ""
+            echo "| 项目 | 值 |"
+            echo "|------|-----|"
+            echo "| 工作流 | ${{ github.workflow }} |"
+            echo "| 运行时间 | ${NOW} |"
+            echo "| 触发方式 | ${{ github.event_name }} |"
+            echo "| 整体结果 | ${{ needs.compile.result == 'success' && '✅ 全部成功' || '⚠️ 部分失败' }} |"
+            echo ""
+            echo "---"
+            echo ""
+            echo "### 各设备摘要"
+            echo ""
+            echo "每台设备的详细编译日志见上方各 `compile` job 的展开面板。"
+            echo ""
+            echo "### 链接"
+            echo ""
+            echo "- [查看 Releases](${{ github.server_url }}/${{ github.repository }}/releases)"
+            echo "- [查看所有 Artifacts](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+          } >> $GITHUB_STEP_SUMMARY
 
       - name: 清理旧 Release (Clean Old Releases)
         uses: ophub/delete-releases-workflows@v0.1.0
