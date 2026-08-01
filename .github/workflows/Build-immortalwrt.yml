@@ -276,7 +276,7 @@ jobs:
       - name: 更新并安装 Feeds (Update and Install Feeds)
         working-directory: ${{ env.OPENWRT_DIR }}
         run: |
-          bash ${{ github.workspace }}/script/immortalwrt-actions-diy1.sh
+          bash ${{ github.workspace }}/script/immortalwrt-actions-diy1.sh "$DEVICE_NAME"
           ./scripts/feeds update -a
           bash ${{ github.workspace }}/script/immortalwrt-actions-diy2.sh
           ./scripts/feeds install -a
