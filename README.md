@@ -61,7 +61,7 @@
 2. **prepare**：读取 `config/immortalwrt-mt798x-enable-configs.txt` 中启用的设备，在 `config/immortalwrt-mt798x/` 中按文件名时间戳自动选取每个设备最新的 `.config`，生成编译矩阵
 3. **compile**（矩阵并行，每设备独立 job）：
    - 拉取源码后，通过 `script/immortalwrt-switch-branch.sh` 按 `config/immortalwrt-device-branch.txt` 切换设备对应分支（未配置则使用 `config/immortalwrt-default-branch.txt`，默认为 `25.12`）
-   - 执行 DIY 脚本注入第三方插件，更新并安装 feeds
+    - 执行 DIY 脚本注入第三方插件（可由 `config/immortalwrt-diy-control.txt` 按设备控制），更新并安装 feeds
    - 打入 `files/etc/uci-defaults/99-custom.sh`（首次启动自动执行，见下文 uci-defaults）
    - 先 `make -j$(nproc+1)` 编译，失败自动回退 `make -j1 V=s` 定位错误
    - **成功**：打包 bin 目录 (bin.7z)，生成 `sha256sums.txt` 和 `build-info.txt`（含源码分支/提交等溯源信息），上传 Artifact 并发布 Release

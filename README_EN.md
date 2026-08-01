@@ -59,7 +59,7 @@ Select `Build-immortalwrt-single.yml` → Run workflow in the Actions tab:
 2. **prepare**: Reads `config/immortalwrt-mt798x-enable-configs.txt` for enabled devices, scans `config/immortalwrt-mt798x/` for the latest `.config` per device (by timestamp), and generates a build matrix.
 3. **compile** (matrix, one job per device):
    - Pulls source code and switches branch via `script/immortalwrt-switch-branch.sh` using `config/immortalwrt-device-branch.txt` (falls back to `config/immortalwrt-default-branch.txt`, defaulting to `25.12`)
-   - Runs DIY scripts to inject third-party packages, updates and installs feeds
+   - Runs DIY scripts to inject third-party packages (controlled per device by `config/immortalwrt-diy-control.txt`), updates and installs feeds
    - Copies `files/etc/uci-defaults/99-custom.sh` for first-boot auto-configuration (see uci-defaults below)
    - Compiles with `make -j$(nproc+1)`, falling back to `make -j1 V=s` on failure for detailed diagnostics
    - **Success**: Packages bin directory (bin.7z), generates `sha256sums.txt` and `build-info.txt` (with source branch/commit traceability), uploads Artifact and creates Release
