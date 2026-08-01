@@ -331,19 +331,25 @@ jobs:
 
           SOURCE_COMMIT=$(cd ${{ env.OPENWRT_DIR }} && git rev-parse --short HEAD 2>/dev/null || echo "unknown")
           cat > release.txt << EOF
-          ImmortalWRT Single Build for ${{ inputs.device }}
-          ==========================================
-          Build Date:    $(date '+%Y-%m-%d %H:%M:%S %Z')
-          Device:        ${{ inputs.device }}
-          Target:        ${{ env.TARGET_NAME }}
-          Source Branch: ${{ env.BUILD_BRANCH }}
-          Source Commit: ${SOURCE_COMMIT}
+          ## ImmortalWrt Single Build — ${{ inputs.device }}
 
-          Included Files:
-          - Firmware images (sysupgrade / factory / preloader / BL2 / U-Boot / FIP)
-          - Full bin.7z (complete bin directory)
-          - SHA256 checksums (sha256sums.txt)
-          - Compilation log (make.log)
+          | 项目 | 内容 |
+          |------|------|
+          | 构建时间 | $(date '+%Y-%m-%d %H:%M:%S %Z') |
+          | 设备 | ${{ inputs.device }} |
+          | 目标平台 | ${{ env.TARGET_NAME }} |
+          | 源码分支 / 提交 | ${{ env.BUILD_BRANCH }} / ${SOURCE_COMMIT} |
+
+          ### 📦 附件说明
+
+          | 文件 | 说明 |
+          |------|------|
+          | `*.bin / *.img / *.fip` | 固件镜像 (sysupgrade / factory / BL2 / U-Boot / FIP) |
+          | `bin.7z` | 完整编译输出目录压缩包 |
+          | `sha256sums.txt` | 所有固件文件的 SHA256 校验码 |
+          | `make.log` | 编译日志 |
+
+          > 工作流执行记录: [#${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
           EOF
 
           echo "| ✅ ${{ inputs.device }} | ${{ env.TARGET_NAME }} | ${{ env.BUILD_BRANCH }} | $(date '+%H:%M:%S') |" >> $GITHUB_STEP_SUMMARY
