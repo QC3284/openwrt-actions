@@ -222,7 +222,6 @@ jobs:
         include: ${{ fromJson(needs.prepare.outputs.matrix) }}
     env:
       DEVICE_NAME: ${{ matrix.device }}
-      CHIP_NAME: ${{ matrix.chip }}
       CONFIG_FILE: ${{ matrix.config }}
     steps:
       - name: 检出仓库 (Checkout Repository)
