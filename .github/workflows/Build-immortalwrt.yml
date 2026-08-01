@@ -276,9 +276,20 @@ jobs:
       - name: 更新并安装 Feeds (Update and Install Feeds)
         working-directory: ${{ env.OPENWRT_DIR }}
         run: |
-          bash ${{ github.workspace }}/script/immortalwrt-actions-diy1.sh
-          ./scripts/feeds update -a
-          bash ${{ github.workspace }}/script/immortalwrt-actions-diy2.sh
+          DIY_CTL="${{ github.workspace }}/config/immortalwrt-diy-control.txt"
+          DIY_ENABLED=true
+          if [ -f "$DIY_CTL" ]; then
+            STATUS=$(grep -v '^[[:space:]]*#' "$DIY_CTL" | awk -v d="$DEVICE_NAME" '$1 == d {print $2; exit}')
+            [ "$STATUS" = "false" ] && DIY_ENABLED=false
+          fi
+          if [ "$DIY_ENABLED" = "true" ]; then
+            echo "DIY 已启用，执行自定义脚本"
+            bash ${{ github.workspace }}/script/immortalwrt-actions-diy1.sh
+            ./scripts/feeds update -a
+            bash ${{ github.workspace }}/script/immortalwrt-actions-diy2.sh
+          else
+            echo "DIY 已禁用 (设备 $DEVICE_NAME 在控制文件中标记为 false)"
+          fi
           ./scripts/feeds install -a
 
       - name: 准备配置文件 (Prepare Config File)

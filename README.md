@@ -84,6 +84,7 @@
 │   ├── immortalwrt-device-branch.txt          # 机型与源码分支对应表
 │   ├── immortalwrt-default-branch.txt         # 默认源码分支 (未匹配设备时使用)
 │   ├── immortalwrt-last-commit.txt            # 各分支上次编译时的远端提交 SHA
+│   ├── immortalwrt-diy-control.txt            # DIY 脚本开关 (按设备启用/禁用)
 │   ├── *-url.txt                              # 各源码仓库地址
 │   ├── *-banner*.txt                          # LEDE 自定义登录 banner
 │   ├── x-wrt-config-tag.txt                   # X-Wrt 编译使用的 tag
@@ -114,6 +115,18 @@
 ### 停用某个设备 (ImmortalWrt)
 
 在 `config/immortalwrt-mt798x-enable-configs.txt` 中删除或注释对应行即可，无需删除配置文件。
+
+### 控制 DIY 脚本
+
+编辑 `config/immortalwrt-diy-control.txt` 可按设备控制是否执行 DIY 脚本（第三方插件注入）。格式：`<设备名> <true|false>`。未列出的设备默认启用。
+
+例如禁用 `glinet_gl-mt3600be` 的 DIY：
+
+```
+glinet_gl-mt3000 true
+konka_komi-a31 true
+glinet_gl-mt3600be false
+```
 
 ### 自定义编译插件
 

@@ -1,0 +1,6 @@
+# DIY 脚本控制文件
+# 格式: <设备名> <true|false>，# 开头为注释
+# 未列出的设备默认启用 (true)
+glinet_gl-mt3000 true
+konka_komi-a31 true
+glinet_gl-mt3600be true
