@@ -435,7 +435,7 @@ jobs:
           fi
           mv bin.7z "$TARGET_PATH/"
           mv make.log "$TARGET_PATH/"
-          cd "$TARGET_PATH"
+          cd "$TARGET_PATH" || { echo "::error::无法进入 $TARGET_PATH"; exit 1; }
           rm -rf packages
           echo "固件文件列表:"
           ls -la *.bin *.img *.trx *.chk *.sys *.rom *.fit *.itb *.7z *.log 2>/dev/null
