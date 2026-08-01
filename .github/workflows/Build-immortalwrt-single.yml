@@ -331,25 +331,21 @@ jobs:
 
           SOURCE_COMMIT=$(cd ${{ env.OPENWRT_DIR }} && git rev-parse --short HEAD 2>/dev/null || echo "unknown")
           cat > release.txt << EOF
-          ## ImmortalWrt Single Build — ${{ inputs.device }}
+          ## ✅ ImmortalWrt Build — \`${{ inputs.device }}\`
 
-          | 项目 | 内容 |
-          |------|------|
-          | 构建时间 | $(date '+%Y-%m-%d %H:%M:%S %Z') |
-          | 设备 | ${{ inputs.device }} |
-          | 目标平台 | ${{ env.TARGET_NAME }} |
-          | 源码分支 / 提交 | ${{ env.BUILD_BRANCH }} / ${SOURCE_COMMIT} |
+          $(date '+%Y-%m-%d %H:%M:%S %Z') · \`${{ inputs.device }}\` · ${{ env.TARGET_NAME }}
 
-          ### 📦 附件说明
+          **Source Branch**  \`${{ env.BUILD_BRANCH }}\` (\`${SOURCE_COMMIT}\`)
 
-          | 文件 | 说明 |
-          |------|------|
-          | `*.bin / *.img / *.fip` | 固件镜像 (sysupgrade / factory / BL2 / U-Boot / FIP) |
-          | `bin.7z` | 完整编译输出目录压缩包 |
-          | `sha256sums.txt` | 所有固件文件的 SHA256 校验码 |
-          | `make.log` | 编译日志 |
+          ### 📦 Attached Files
+          - **\`*sysupgrade.bin\` / \`*factory.img\`** — Firmware images
+          - **\`*preloader.bin\` / \`*bl31-uboot.fip\`** — Bootloader files (if applicable)
+          - **\`bin.7z\`** — Full build directory archive
+          - **\`sha256sums.txt\`** — SHA256 checksums for all firmware files
+          - **\`make.log\`** — Compilation log
 
-          > 工作流执行记录: [#${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          ---
+          > [${{ github.workflow }} #${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
           EOF
 
           echo "| ✅ ${{ inputs.device }} | ${{ env.TARGET_NAME }} | ${{ env.BUILD_BRANCH }} | $(date '+%H:%M:%S') |" >> $GITHUB_STEP_SUMMARY

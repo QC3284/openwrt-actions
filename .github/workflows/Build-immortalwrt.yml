@@ -376,24 +376,21 @@ jobs:
           echo "release_tag=$RELEASE_TAG" >> $GITHUB_OUTPUT
 
           cat > release_failed.txt <<EOF
-          ## ⚠️ 编译失败 — ${{ matrix.device }}
+          ## ❌ Build Failed — \`${{ matrix.device }}\`
 
-          | 项目 | 内容 |
-          |------|------|
-          | 构建时间 | $(date '+%Y-%m-%d %H:%M:%S %Z') |
-          | 设备 | ${{ matrix.device }} |
-          | 芯片 | ${{ matrix.chip }} |
-          | 源码 | $(cat ${{ env.SOURCE_CODE_URL_FILE }}) |
-          | 配置文件 | $(basename "${{ env.CONFIG_FILE }}") |
+          $(date '+%Y-%m-%d %H:%M:%S %Z') · \`${{ matrix.device }}\` · ${{ matrix.chip }}
 
-          ### 📋 错误摘要
+          **Source**  $(cat ${{ env.SOURCE_CODE_URL_FILE }})  
+          **Config**  \`$(basename "${{ env.CONFIG_FILE }}")\`
+
+          ### 🔍 Error Summary
 
           EOF
           cat ${{ env.OPENWRT_DIR }}/error_report.md >> release_failed.txt
           {
             echo ""
             echo "---"
-            echo "> 完整日志见附件 **make.log** | 工作流: [#${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+            echo "> 📋 Full log: **make.log** · [${{ github.workflow }} #${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
           } >> release_failed.txt
 
       - name: 发布失败 Release (Create Failure Release - Draft)
@@ -535,29 +532,23 @@ jobs:
           echo "release_tag=$RELEASE_TAG" >> $GITHUB_OUTPUT
 
           cat > release_success.txt <<EOF
-          ## ImmortalWrt Build — ${{ matrix.device }}
+          ## ✅ ImmortalWrt Build — \`${{ matrix.device }}\`
 
-          | 项目 | 内容 |
-          |------|------|
-          | 构建时间 | $(date '+%Y-%m-%d %H:%M:%S %Z') |
-          | 设备 | ${{ matrix.device }} |
-          | 芯片 | ${{ matrix.chip }} |
-          | 目标平台 | ${{ env.TARGET_NAME }} |
-          | 源码 | $(cat ${{ env.SOURCE_CODE_URL_FILE }}) |
-          | 源码分支 / 提交 | ${SOURCE_BRANCH} / ${SOURCE_COMMIT} |
-          | 配置文件 | $(basename "${{ env.CONFIG_FILE }}") |
+          $(date '+%Y-%m-%d %H:%M:%S %Z') · \`${{ matrix.device }}\` · ${{ matrix.chip }} · ${{ env.TARGET_NAME }}
 
-          ### 📦 附件说明
+          **Source**  $(cat ${{ env.SOURCE_CODE_URL_FILE }})  @ \`${SOURCE_BRANCH}\` (\`${SOURCE_COMMIT}\`)  
+          **Config**  \`$(basename "${{ env.CONFIG_FILE }}")\`
 
-          | 文件 | 说明 |
-          |------|------|
-          | `*.bin / *.img / *.fip` | 固件镜像 (sysupgrade / factory / BL2 / U-Boot / FIP) |
-          | `bin.7z` | 完整编译输出目录压缩包 |
-          | `sha256sums.txt` | 所有固件文件的 SHA256 校验码 |
-          | `build-info.txt` | 构建追溯信息 |
-          | `make.log` | 编译日志 |
+          ### 📦 Attached Files
+          - **\`*sysupgrade.bin\` / \`*factory.img\`** — Firmware images
+          - **\`*preloader.bin\` / \`*bl31-uboot.fip\`** — Bootloader files (if applicable)
+          - **\`bin.7z\`** — Full build directory archive
+          - **\`sha256sums.txt\`** — SHA256 checksums for all firmware files
+          - **\`build-info.txt\`** — Build traceability (branch, commit, timestamp)
+          - **\`make.log\`** — Compilation log
 
-          > 工作流执行记录: [${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          ---
+          > [${{ github.workflow }} #${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
           EOF
 
       - name: 发布成功 Release (Create Success Release)
