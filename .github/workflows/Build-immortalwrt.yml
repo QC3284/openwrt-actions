@@ -425,6 +425,8 @@ jobs:
           fi
           TARGET_NAME="${TARGET_PATH#bin/targets/}"
           echo "输出目录: $TARGET_PATH (平台: $TARGET_NAME)"
+          echo "可用磁盘空间:"
+          df -h .
 
           7z a -mx=9 -mmt=$(nproc) bin.7z bin/
           if [ $? -ne 0 ]; then
@@ -438,16 +440,22 @@ jobs:
           echo "固件文件列表:"
           ls -la *.bin *.img *.trx *.chk *.sys *.rom *.fit *.itb *.7z *.log 2>/dev/null
 
-          # 给固件文件名追加时间戳
+          # 给固件文件名追加时间戳 (失败自动重试一次)
           TS_SUFFIX="_$(date +%Y%m%d%H%M)"
           for f in *.bin *.img *.trx *.chk *.sys *.rom *.fit *.itb; do
             [ -f "$f" ] || continue
             base="${f%.*}"
             ext="${f##*.}"
             newname="${base}${TS_SUFFIX}.${ext}"
-            mv "$f" "$newname" 2>/dev/null
-            if [ $? -eq 0 ]; then
+            if mv "$f" "$newname" 2>/dev/null; then
               echo "  重命名: $f -> $newname"
+            else
+              sleep 1
+              if mv "$f" "$newname" 2>/dev/null; then
+                echo "  重命名(重试成功): $f -> $newname"
+              else
+                echo "  ⚠️ 重命名失败: $f (保留原名，重试亦失败)"
+              fi
             fi
           done
           echo ""
@@ -455,10 +463,21 @@ jobs:
           echo "TARGET_DIR=${{ env.OPENWRT_DIR }}/$TARGET_PATH" >> $GITHUB_ENV
           echo "TARGET_NAME=$TARGET_NAME" >> $GITHUB_ENV
 
-          # 生成 SHA256 校验文件
+          # 生成 SHA256 校验文件 (失败自动重试一次，仍失败则致命)
           FIRMWARE_FILES=$(ls *.bin *.img *.trx *.chk *.sys *.rom *.fit *.itb 2>/dev/null)
           if [ -n "$FIRMWARE_FILES" ]; then
-            sha256sum $FIRMWARE_FILES > sha256sums.txt 2>/dev/null
+            if sha256sum $FIRMWARE_FILES > sha256sums.txt 2>/dev/null; then
+              echo "SHA256 校验文件已生成"
+            else
+              sleep 1
+              if sha256sum $FIRMWARE_FILES > sha256sums.txt 2>/dev/null; then
+                echo "SHA256 校验文件已生成 (重试成功)"
+              else
+                echo "::error::SHA256 校验生成失败 (已重试)"
+                exit 1
+              fi
+            fi
+          fi
             if [ $? -eq 0 ]; then
               echo "SHA256 校验文件已生成"
             else
