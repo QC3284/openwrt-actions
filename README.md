@@ -39,11 +39,12 @@
 ### 首次使用 (ImmortalWrt)
 
 1. Fork 本仓库
-2. 编辑 `config/immortalwrt-mt798x-enable-configs.txt`，添加需要编译的设备名
-3. 将对应 `.config` 命名为 `immortalwrt-actions-<芯片>-<设备名>-<时间戳>.config` 放入 `config/immortalwrt-mt798x/`
-4. 如需修改默认分支，编辑 `config/immortalwrt-default-branch.txt`；如需按设备指定分支，编辑 `config/immortalwrt-device-branch.txt`
-5. 在 Actions 页面手动触发 `Build-immortalwrt-single.yml` 测试单个设备
-6. 确认无误后，`Build-immortalwrt.yml` 将按定时自动执行编译
+2. 在仓库 Settings → Actions → General 中确保 Actions 已启用（Fork 后默认禁用）
+3. 编辑 `config/immortalwrt-mt798x-enable-configs.txt`，添加需要编译的设备名
+4. 将对应 `.config` 命名为 `immortalwrt-actions-<芯片>-<设备名>-<时间戳>.config` 放入 `config/immortalwrt-mt798x/`
+5. 如需修改默认分支，编辑 `config/immortalwrt-default-branch.txt`；如需按设备指定分支，编辑 `config/immortalwrt-device-branch.txt`
+6. 在 Actions 页面手动触发 `Build-immortalwrt-single.yml` 测试单个设备
+7. 确认无误后，`Build-immortalwrt.yml` 将按定时自动执行编译
 
 ### 单设备快速测试 (ImmortalWrt)
 
@@ -72,6 +73,8 @@
 
 ```
 ├── .github/workflows/        # 各源码的编译工作流
+├── .github/dependabot.yml     # GitHub Actions 自动更新配置
+├── .gitignore
 ├── config/
 │   ├── immortalwrt-mt798x/                    # 各设备编译配置 (按 芯片-设备名-时间戳 命名)
 │   ├── immortalwrt-mt798x-enable-configs.txt  # 启用编译的设备列表
@@ -108,6 +111,21 @@
 ### 停用某个设备 (ImmortalWrt)
 
 在 `config/immortalwrt-mt798x-enable-configs.txt` 中删除或注释对应行即可，无需删除配置文件。
+
+### 自定义编译插件
+
+编辑 `script/immortalwrt-actions-diy1.sh` 可添加或移除编译时集成到固件的第三方插件。当前集成：
+
+| 插件 | 来源 | 说明 |
+|------|------|------|
+| OpenClash | `vernesong/OpenClash` | 代理工具 |
+| luci-app-quickfile | `sbwml/luci-app-quickfile` | 文件管理 |
+| luci-theme-proton2025 | `ChesterGoodiny/luci-theme-proton2025` | 主题 |
+| luci-app-run | `wukongdaily/luci-app-run` | 运行工具 |
+
+### 自定义 uci-defaults 配置
+
+编辑 `script/immortalwrt-uci-defaults.sh` 顶部的 `LAN_IP` 变量可修改默认管理地址。mirrors.sh 的镜像源列表可在脚本第 68-78 行的 `select_mirror()` 函数中增删。
 
 ## uci-defaults 首次启动配置
 
