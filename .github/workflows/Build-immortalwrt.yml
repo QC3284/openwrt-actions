@@ -451,10 +451,14 @@ jobs:
               echo "  重命名: $f -> $newname"
             else
               sleep 1
-              if mv "$f" "$newname" 2>/dev/null; then
+              if [ -f "$newname" ]; then
+                # 目标已存在 (上次 mv 部分成功)，清理源文件即可
+                rm -f "$f" 2>/dev/null
+                echo "  重命名(清理源): $f -> $newname"
+              elif mv "$f" "$newname" 2>/dev/null; then
                 echo "  重命名(重试成功): $f -> $newname"
               else
-                echo "  ⚠️ 重命名失败: $f (保留原名，重试亦失败)"
+                echo "  ⚠️ 重命名失败: $f (保留原名)"
               fi
             fi
           done
