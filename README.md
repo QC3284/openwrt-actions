@@ -54,6 +54,7 @@
 - `device`：输入设备名（如 `glinet_gl-mt3000`）
 - `branch`：留空使用配置文件中的分支，或手动指定（如 `25.12-dev-wifi7`）
 - `config`：留空自动选取最新，或手动指定文件名
+- `diy_enabled`：留空读取控制文件，或手动指定 `true` / `false` 覆盖
 
 ## ImmortalWrt 编译流程
 

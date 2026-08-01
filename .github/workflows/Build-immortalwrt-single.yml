@@ -21,6 +21,11 @@ on:
         required: false
         type: string
         default: ''
+      diy_enabled:
+        description: '启用 DIY 脚本 (true/false，留空则读取 control 文件)'
+        required: false
+        type: string
+        default: ''
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event_name }}
@@ -162,9 +167,13 @@ jobs:
         run: |
           DIY_CTL="${{ github.workspace }}/config/immortalwrt-diy-control.txt"
           DIY_ENABLED=true
-          if [ -f "$DIY_CTL" ]; then
+          if [ -n "${{ inputs.diy_enabled }}" ]; then
+            [ "${{ inputs.diy_enabled }}" = "false" ] && DIY_ENABLED=false
+            echo "DIY 控制: 手动指定为 $DIY_ENABLED"
+          elif [ -f "$DIY_CTL" ]; then
             STATUS=$(grep -v '^[[:space:]]*#' "$DIY_CTL" | awk -v d="$DEVICE_NAME" '$1 == d {print $2; exit}')
             [ "$STATUS" = "false" ] && DIY_ENABLED=false
+            echo "DIY 控制: 从文件读取为 $DIY_ENABLED"
           fi
           if [ "$DIY_ENABLED" = "true" ]; then
             echo "DIY 已启用，执行自定义脚本"
@@ -172,7 +181,7 @@ jobs:
             ./scripts/feeds update -a
             bash ${{ github.workspace }}/script/immortalwrt-actions-diy2.sh
           else
-            echo "DIY 已禁用 (设备 $DEVICE_NAME 在控制文件中标记为 false)，跳过自定义脚本"
+            echo "DIY 已禁用，跳过自定义脚本"
             ./scripts/feeds update -a
           fi
           ./scripts/feeds install -a
