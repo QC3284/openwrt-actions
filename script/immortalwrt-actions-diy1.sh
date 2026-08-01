@@ -1,11 +1,7 @@
 #!/usr/bin/env bash
-
+# File: immortalwrt-actions-diy1.sh — feeds update 前克隆第三方插件
+# Copyright (c) 2024-2026 QC3284. GPL-3.0-only.
 # https://github.com/QC3284/openwrt-actions
-#
-# Copyright (c) 2024-2026 QC3284 <https://www.xcqcoo.top>
-#
-# This is free software, licensed under the GNU GPLv3 License.
-# See /LICENSE for more information.
 
 set -e
 

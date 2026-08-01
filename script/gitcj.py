@@ -1,3 +1,7 @@
+# File: gitcj.py — 从 giturl.txt 批量安全克隆 git 仓库
+# Copyright (c) 2024-2026 QC3284. GPL-3.0-only.
+# https://github.com/QC3284/openwrt-actions
+
 import subprocess
 import os
 import re

@@ -1,10 +1,6 @@
+# File: Build-immortalwrt-single.yml — ImmortalWrt 单设备手动编译
+# Copyright (c) 2024-2026 QC3284. GPL-3.0-only.
 # https://github.com/QC3284/openwrt-actions
-# File name: Build-immortalwrt-single.yml
-#
-# Copyright (c) 2026 QC3284 <https://www.xcqcoo.top>
-#
-# This is free software, licensed under the GNU GPLv3 License.
-# See /LICENSE for more information.
 
 name: 编译 ImmortalWrt 单设备 (Single Device Build)
 

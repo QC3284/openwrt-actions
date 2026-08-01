@@ -1,10 +1,6 @@
+# File: Clean-old-configs.yml — 每周清理旧编译配置
+# Copyright (c) 2024-2026 QC3284. GPL-3.0-only.
 # https://github.com/QC3284/openwrt-actions
-# File name: Clean-old-configs.yml
-#
-# Copyright (c) 2026 QC3284 <https://www.xcqcoo.top>
-#
-# This is free software, licensed under the GNU GPLv3 License.
-# See /LICENSE for more information.
 
 name: 清理旧编译配置 (Clean Old Build Configs)
 

@@ -1,11 +1,7 @@
-#!/bin/bash
-
+#!/usr/bin/env bash
+# File: immortalwrt-switch-branch.sh — 按机型切换源码分支
+# Copyright (c) 2024-2026 QC3284. GPL-3.0-only.
 # https://github.com/QC3284/openwrt-actions
-#
-# Copyright (c) 2024-2026 QC3284 <https://www.xcqcoo.top>
-#
-# This is free software, licensed under the GNU GPLv3 License.
-# See /LICENSE for more information.
 
 # 用法: bash immortalwrt-switch-branch.sh <设备名> [源码目录] [配置文件]
 
