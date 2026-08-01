@@ -424,9 +424,9 @@ jobs:
           TARGET_NAME="${TARGET_PATH#bin/targets/}"
           echo "输出目录: $TARGET_PATH (平台: $TARGET_NAME)"
 
-          7z a -mx=9 -mmt=$(nproc) bin.7z bin/
-          mv bin.7z "$TARGET_PATH/"
-          mv make.log "$TARGET_PATH/"
+          7z a -mx=9 -mmt=$(nproc) bin.7z bin/ || echo "::warning::bin.7z 打包失败"
+          mv bin.7z "$TARGET_PATH/" 2>/dev/null || true
+          mv make.log "$TARGET_PATH/" 2>/dev/null || true
           cd "$TARGET_PATH"
           rm -rf packages
           echo "固件文件列表:"
@@ -439,7 +439,7 @@ jobs:
             base="${f%.*}"
             ext="${f##*.}"
             newname="${base}${TS_SUFFIX}.${ext}"
-            mv "$f" "$newname" 2>/dev/null && echo "  重命名: $f -> $newname"
+            mv "$f" "$newname" 2>/dev/null && echo "  重命名: $f -> $newname" || true
           done
           echo ""
 
@@ -449,8 +449,7 @@ jobs:
           # 生成 SHA256 校验文件
           FIRMWARE_FILES=$(ls *.bin *.img *.trx *.chk *.sys *.rom *.fit *.itb 2>/dev/null)
           if [ -n "$FIRMWARE_FILES" ]; then
-            sha256sum $FIRMWARE_FILES > sha256sums.txt
-            echo "SHA256 校验文件已生成"
+            sha256sum $FIRMWARE_FILES > sha256sums.txt 2>/dev/null && echo "SHA256 校验文件已生成" || echo "::warning::SHA256 校验生成失败"
           fi
 
       - name: 生成构建信息 (Generate Build Info)
