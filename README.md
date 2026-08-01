@@ -7,6 +7,8 @@
 
 > [!WARNING]
 > 目前仅 **ImmortalWrt** 工作流处于积极维护中，其余工作流（LEDE / OpenWrt / X-Wrt）已停止更新，仍可运行但可能存在未知问题，请谨慎使用。
+>
+> **免责声明**：本项目按 GNU GPLv3 许可分发，除 ImmortalWrt 外的工作流均无后续支持或安全更新计划，使用后果自负。本项目与 OpenWrt.org 无任何关联。
 
 ## 工作流
 
