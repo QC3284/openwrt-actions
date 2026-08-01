@@ -14,7 +14,7 @@
 
 | 工作流 | 源码 | 状态 | 说明 |
 | --- | --- | --- | --- |
-| `Build-immortalwrt.yml` | [immortalwrt-mt798x-rebase](https://github.com/chasey-dev/immortalwrt-mt798x-rebase) | ✅ 维护中 | 多设备矩阵并行编译 (MT798x 系列)，含失败处理 |
+| `Build-immortalwrt.yml` | [immortalwrt-mt798x-rebase](https://github.com/chasey-dev/immortalwrt-mt798x-rebase) | ✅ 维护中 | 矩阵并行编译，含变更跳过、失败诊断、SHA256 校验、构建追溯 |
 | `Build-immortalwrt-single.yml` | [immortalwrt-mt798x-rebase](https://github.com/chasey-dev/immortalwrt-mt798x-rebase) | ✅ 维护中 | 单设备手动编译，支持指定分支和配置文件 |
 | `Build-lede.yml` | [coolsnowwolf/lede](https://github.com/coolsnowwolf/lede) | ⛔ 停止更新 | 编译 LEDE |
 | `Build-openwrt.yml` | [openwrt/openwrt](https://git.openwrt.org/openwrt/openwrt.git) | ⛔ 停止更新 | 编译官方 OpenWrt (main 分支) |
@@ -65,7 +65,8 @@
    - **成功**：打包 bin 目录 (bin.7z)，生成 `sha256sums.txt` 和 `build-info.txt`（含源码分支/提交等溯源信息），上传 Artifact 并发布 Release
    - **失败**：提取关键错误生成 `error_report.md`（输出到 Step Summary），上传日志并创建草稿 Release
    - 支持 `concurrency` 控制：定时触发时自动取消未完成的旧执行，手动触发不受影响
-   - make.log 超过 10 万行时自动截断为首尾各 3000 行，避免上传失败
+    - make.log 超过 10 万行时自动截断为首尾各 3000 行，避免上传失败
+    - `summarize` job 在编译结束后汇总所有设备结果，输出报告并清理旧 Release
 
 ## 目录结构
 
@@ -94,7 +95,7 @@
     ├── lede-github-actions-rl.sh     # LEDE: 生成 Release 说明
     ├── x-wrt-actions-txt-001.sh      # X-Wrt: 生成 Release 说明
     ├── x-wrt-git-001.sh              # 替换 coremark 包
-    ├── x-wrt-make-001.sh             # 预下载依赖并清理残缺包
+    ├── x-wrt-make-001.sh             # 预下载依赖并清理残缺包 (ImmortalWrt/X-Wrt 共用)
     └── gitcj.py + giturl.txt         # 批量克隆第三方 luci 插件
 ```
 
@@ -114,7 +115,7 @@
 
 ### 自定义编译插件
 
-编辑 `script/immortalwrt-actions-diy1.sh` 可添加或移除编译时集成到固件的第三方插件。当前集成：
+编辑 `script/immortalwrt-actions-diy1.sh` 可添加或移除编译时集成到固件的第三方插件。新插件按以下格式追加到末尾：`git clone --depth 1 <URL> package/<目录> || { echo "警告: 克隆失败"; }`。当前集成：
 
 | 插件 | 来源 | 说明 |
 |------|------|------|
@@ -152,7 +153,7 @@
 - 管理地址：`192.168.5.1/24`
 - 账号/密码：`root` / 无密码（首次登录后请设置密码）
 - SSH：若编译时选中 `openssh-server`，则自动启用 sshd 并禁用 dropbear、允许 root 密码登录；否则保持 dropbear 不变
-- LuCI：默认启用，通过 `http://192.168.5.1` 访问
+- LuCI：若编译时选中 `luci` 包则默认启用，通过 `http://192.168.5.1` 访问
 
 ## 许可证
 

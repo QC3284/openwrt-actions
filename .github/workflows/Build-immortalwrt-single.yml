@@ -192,11 +192,29 @@ jobs:
             EXIT_CODE=${PIPESTATUS[0]}
           fi
           if [ $EXIT_CODE -eq 0 ]; then
-            echo "编译成功完成！"
-            echo "compile_completed=true" >> $GITHUB_OUTPUT
+            FIRMWARE_CHECK=$(find bin/targets -mindepth 2 -maxdepth 2 -type d 2>/dev/null | head -1)
+            if [ -n "$FIRMWARE_CHECK" ]; then
+              echo "编译成功完成！"
+              echo "compile_completed=true" >> $GITHUB_OUTPUT
+            else
+              echo "编译通过但未生成固件文件 (可能 .config 未选择目标设备)"
+              echo "compile_completed=false" >> $GITHUB_OUTPUT
+            fi
           else
             echo "编译失败，退出码: $EXIT_CODE"
             echo "compile_completed=false" >> $GITHUB_OUTPUT
+          fi
+
+          LOG_LINES=$(wc -l < make.log)
+          if [ "$LOG_LINES" -gt 100000 ]; then
+            echo "make.log 过大 ($LOG_LINES 行), 保留首尾各 3000 行"
+            head -3000 make.log > make.log.tmp
+            echo "" >> make.log.tmp
+            echo "...... [中间省略 $((LOG_LINES - 6000)) 行] ......" >> make.log.tmp
+            echo "" >> make.log.tmp
+            tail -3000 make.log >> make.log.tmp
+            mv make.log.tmp make.log
+            echo "make.log 已截断至 $(wc -l < make.log) 行"
           fi
 
       # ---------- 编译失败处理 ----------
