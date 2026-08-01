@@ -313,8 +313,15 @@ jobs:
           fi
 
           if [ $EXIT_CODE -eq 0 ]; then
-            echo "编译成功完成！"
-            echo "compile_completed=true" >> $GITHUB_OUTPUT
+            # 验证是否真正生成了固件 (make 可能返回 0 但未生成固件)
+            FIRMWARE_CHECK=$(find bin/targets -mindepth 2 -maxdepth 2 -type d 2>/dev/null | head -1)
+            if [ -n "$FIRMWARE_CHECK" ]; then
+              echo "编译成功完成！"
+              echo "compile_completed=true" >> $GITHUB_OUTPUT
+            else
+              echo "编译通过但未生成固件文件 (可能 .config 未选择目标设备)"
+              echo "compile_completed=false" >> $GITHUB_OUTPUT
+            fi
           else
             echo "编译失败，退出码: $EXIT_CODE"
             echo "compile_completed=false" >> $GITHUB_OUTPUT
@@ -411,13 +418,9 @@ jobs:
           # 动态探测输出目录 (bin/targets/<target>/<subtarget>)，兼容不同芯片/平台
           TARGET_PATH=$(find bin/targets -mindepth 2 -maxdepth 2 -type d | head -n 1)
           if [ -z "$TARGET_PATH" ]; then
-            echo "::warning::未找到编译输出目录 bin/targets/*/*，编译可能未生成固件"
-            echo "TARGET_DIR=${{ env.OPENWRT_DIR }}/bin" >> $GITHUB_ENV
-            echo "TARGET_NAME=unknown" >> $GITHUB_ENV
-            echo "firmware_found=false" >> $GITHUB_OUTPUT
+            echo "::warning::未找到编译输出目录，跳过固件打包"
             exit 0
           fi
-          echo "firmware_found=true" >> $GITHUB_OUTPUT
           TARGET_NAME="${TARGET_PATH#bin/targets/}"
           echo "输出目录: $TARGET_PATH (平台: $TARGET_NAME)"
 
@@ -451,7 +454,7 @@ jobs:
           fi
 
       - name: 生成构建信息 (Generate Build Info)
-        if: steps.compress.outputs.firmware_found == 'true'
+        if: steps.compile.outputs.compile_completed == 'true'
         run: |
           cd ${{ env.OPENWRT_DIR }}
           SOURCE_COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
@@ -478,7 +481,7 @@ jobs:
           echo "| ✅ ${{ matrix.device }} | ${{ matrix.chip }} | ${{ env.TARGET_NAME }} | $(date '+%H:%M:%S') |" >> $GITHUB_STEP_SUMMARY
 
       - name: 上传固件 Artifact (Upload Firmware Artifact)
-        if: steps.compress.outputs.firmware_found == 'true'
+        if: steps.compile.outputs.compile_completed == 'true'
         uses: actions/upload-artifact@v7.0.1
         with:
           name: openwrt-firmware-${{ matrix.device }}
@@ -486,7 +489,7 @@ jobs:
           retention-days: 30
 
       - name: 生成成功 Release 信息 (Generate Success Release Info)
-        if: steps.compress.outputs.firmware_found == 'true'
+        if: steps.compile.outputs.compile_completed == 'true'
         id: success_release
         run: |
           BUILD_DATETIME=$(date +"%Y%m%d%H%M")
@@ -512,7 +515,7 @@ jobs:
           EOF
 
       - name: 发布成功 Release (Create Success Release)
-        if: steps.compress.outputs.firmware_found == 'true'
+        if: steps.compile.outputs.compile_completed == 'true'
         uses: softprops/action-gh-release@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
