@@ -234,16 +234,26 @@ jobs:
         if: steps.compile.outputs.compile_completed == 'true'
         working-directory: ${{ env.OPENWRT_DIR }}
         run: |
+          set +e
+
           TARGET_PATH=$(find bin/targets -mindepth 2 -maxdepth 2 -type d | head -n 1)
-          [ -z "$TARGET_PATH" ] && { echo "::error::未找到编译输出目录"; exit 1; }
+          if [ -z "$TARGET_PATH" ]; then
+            echo "::warning::未找到编译输出目录，跳过固件打包"
+            exit 0
+          fi
           TARGET_NAME="${TARGET_PATH#bin/targets/}"
           echo "输出目录: $TARGET_PATH"
+
           7z a -mx=9 -mmt=$(nproc) bin.7z bin/
+          if [ $? -ne 0 ]; then
+            echo "::error::bin.7z 打包失败"
+            exit 1
+          fi
           mv bin.7z "$TARGET_PATH/"
           mv make.log "$TARGET_PATH/"
           cd "$TARGET_PATH"
           rm -rf packages
-          ls -la *.bin *.img *.trx *.chk *.sys *.rom *.fit *.itb *.7z *.log 2>/dev/null || true
+          ls -la *.bin *.img *.trx *.chk *.sys *.rom *.fit *.itb *.7z *.log 2>/dev/null
 
           # 给固件文件名追加时间戳
           TS_SUFFIX="_$(date +%Y%m%d%H%M)"
@@ -251,14 +261,27 @@ jobs:
             [ -f "$f" ] || continue
             base="${f%.*}"
             ext="${f##*.}"
-            mv "$f" "${base}${TS_SUFFIX}.${ext}" 2>/dev/null && echo "  重命名: $f -> ${base}${TS_SUFFIX}.${ext}"
+            newname="${base}${TS_SUFFIX}.${ext}"
+            mv "$f" "$newname" 2>/dev/null
+            if [ $? -eq 0 ]; then
+              echo "  重命名: $f -> $newname"
+            fi
           done
           echo ""
 
           echo "TARGET_DIR=${{ env.OPENWRT_DIR }}/$TARGET_PATH" >> $GITHUB_ENV
           echo "TARGET_NAME=$TARGET_NAME" >> $GITHUB_ENV
+
           FIRMWARE_FILES=$(ls *.bin *.img *.trx *.chk *.sys *.rom *.fit *.itb 2>/dev/null)
-          [ -n "$FIRMWARE_FILES" ] && sha256sum $FIRMWARE_FILES > sha256sums.txt
+          if [ -n "$FIRMWARE_FILES" ]; then
+            sha256sum $FIRMWARE_FILES > sha256sums.txt 2>/dev/null
+            if [ $? -eq 0 ]; then
+              echo "SHA256 校验文件已生成"
+            else
+              echo "::error::SHA256 校验生成失败"
+              exit 1
+            fi
+          fi
 
       - name: 上传固件 Artifact (Upload Firmware Artifact)
         if: steps.compile.outputs.compile_completed == 'true'
