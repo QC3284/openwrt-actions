@@ -66,7 +66,7 @@
    - 先 `make -j$(nproc+1)` 编译，失败自动回退 `make -j1 V=s` 定位错误
    - **成功**：打包 bin 目录 (bin.7z)，生成 `sha256sums.txt` 和 `build-info.txt`（含源码分支/提交等溯源信息），上传 Artifact 并发布 Release
    - **失败**：提取关键错误生成 `error_report.md`（输出到 Step Summary），上传日志并创建草稿 Release
-   - 支持 `concurrency` 控制：定时触发时自动取消未完成的旧执行，手动触发不受影响
+    - 支持 `concurrency` 控制：定时触发时自动取消未完成的旧执行，手动触发不受影响
     - make.log 超过 10 万行时自动截断为首尾各 3000 行，避免上传失败
     - `summarize` job 在编译结束后汇总所有设备结果，输出报告并清理旧 Release
 
@@ -128,7 +128,7 @@
 
 ### 自定义 uci-defaults 配置
 
-编辑 `script/immortalwrt-uci-defaults.sh` 顶部的 `LAN_IP` 变量可修改默认管理地址。mirrors.sh 的镜像源列表可在脚本第 68-78 行的 `select_mirror()` 函数中增删。
+编辑 `script/immortalwrt-uci-defaults.sh` 顶部的 `LAN_IP` 变量可修改默认管理地址。mirrors.sh 的镜像源列表可在脚本的 `select_mirror()` 函数中增删。
 
 ## uci-defaults 首次启动配置
 
