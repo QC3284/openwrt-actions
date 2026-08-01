@@ -172,7 +172,8 @@ jobs:
             ./scripts/feeds update -a
             bash ${{ github.workspace }}/script/immortalwrt-actions-diy2.sh
           else
-            echo "DIY 已禁用 (设备 $DEVICE_NAME 在控制文件中标记为 false)"
+            echo "DIY 已禁用 (设备 $DEVICE_NAME 在控制文件中标记为 false)，跳过自定义脚本"
+            ./scripts/feeds update -a
           fi
           ./scripts/feeds install -a
 
