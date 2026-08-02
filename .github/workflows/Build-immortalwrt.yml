@@ -597,28 +597,16 @@ jobs:
         run: |
           NOW=$(date '+%Y-%m-%d %H:%M:%S')
           MATRIX='${{ needs.prepare.outputs.matrix }}'
+          RESULT="${{ needs.compile.result == 'success' && '✅ 全部成功' || '⚠️ 部分失败' }}"
 
           {
-            echo "# ImmortalWrt 编译报告"
-            echo ""
-            echo "| 项目 | 值 |"
-            echo "|------|-----|"
-            echo "| 工作流 | ${{ github.workflow }} |"
-            echo "| 运行时间 | ${NOW} |"
-            echo "| 触发方式 | ${{ github.event_name }} |"
-            echo "| 整体结果 | ${{ needs.compile.result == 'success' && '✅ 全部成功' || '⚠️ 部分失败' }} |"
-            echo "| 编译设备 | $(echo "$MATRIX" | jq -r '[.[].device] | join(\", \")') |"
-            echo ""
-
-            echo "---"
-            echo ""
-            echo "### 编译设备详情"
+            echo "# ${RESULT} — ImmortalWrt 编译"
             echo ""
             echo "| 设备 | 芯片 |"
             echo "|------|------|"
             echo "$MATRIX" | jq -r '.[] | "| \`\(.device)\` | \(.chip) |"'
             echo ""
-            echo "每台设备的详细编译日志见上方各 \`compile\` job 的展开面板（含固件文件列表、SHA256 校验、时间戳等）。"
+            echo "> ${NOW} · ${{ github.event_name }} · [${{ github.workflow }} #${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
           } >> $GITHUB_STEP_SUMMARY
 
       - name: 清理旧 Release (Clean Old Releases)
