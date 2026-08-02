@@ -19,6 +19,7 @@ env:
   OPENWRT_DIR: /workdir/openwrt
   SOURCE_CODE_URL_FILE: ${{ github.workspace }}/config/immortalwrt-url.txt
   FW_GLOB: "*.bin *.img *.trx *.chk *.sys *.rom *.fit *.itb *.fip *.ubi"
+  ERROR_PATTERN: 'error:|error [0-9]+|fatal|FAILED|collect2|No rule to make target|make\[[0-9]+\].*Error|Segmentation fault|undefined reference|No such file|cannot find|patch.*failed|Hunk.*FAILED'
 
 jobs:
   prepare:
@@ -359,7 +360,7 @@ jobs:
             echo ""
             echo "### 关键错误信息 (最后 50 条)"
             echo '```'
-            grep -inE "error:|error [0-9]+|fatal|FAILED|collect2|No rule to make target|make\[[0-9]+\].*Error|Segmentation fault|undefined reference|No such file|cannot find|patch.*failed|Hunk.*FAILED" make.log | tail -50 || echo "未匹配到关键错误，请查看完整日志"
+            grep -inE "$ERROR_PATTERN" make.log | tail -50 || echo "未匹配到关键错误，请查看完整日志"
             echo '```'
             echo ""
             echo "### 日志末尾 100 行"

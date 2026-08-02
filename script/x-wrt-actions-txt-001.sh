@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # https://github.com/QC3284/openwrt-actions
 #
 # Copyright (c) 2024-2026 QC3284 <https://www.xcqcoo.top>
