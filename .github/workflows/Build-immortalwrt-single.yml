@@ -159,7 +159,6 @@ jobs:
           cd ${{ env.OPENWRT_DIR }}
           git fetch origin "$BUILD_BRANCH"
           git checkout -B "$BUILD_BRANCH" "origin/$BUILD_BRANCH"
-          git reset --hard "origin/$BUILD_BRANCH"
           echo "当前分支: $(git branch --show-current)"
 
       - name: 更新并安装 Feeds (Update and Install Feeds)
