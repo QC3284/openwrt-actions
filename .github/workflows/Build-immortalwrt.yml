@@ -394,7 +394,7 @@ jobs:
 
           $(date '+%Y-%m-%d %H:%M:%S %Z') · \`${{ matrix.device }}\` · ${{ matrix.chip }}
 
-          **Source**  $(cat ${{ env.SOURCE_CODE_URL_FILE }})  
+          **Source**  $(cat ${{ env.SOURCE_CODE_URL_FILE }})
           **Config**  \`$(basename "${{ env.CONFIG_FILE }}")\`
 
           ### 🔍 Error Summary
@@ -550,7 +550,7 @@ jobs:
 
           $(date '+%Y-%m-%d %H:%M:%S %Z') · \`${{ matrix.device }}\` · ${{ matrix.chip }} · ${{ env.TARGET_NAME }}
 
-          **Source**  $(cat ${{ env.SOURCE_CODE_URL_FILE }})  @ \`${SOURCE_BRANCH}\` (\`${SOURCE_COMMIT}\`)  
+          **Source**  $(cat ${{ env.SOURCE_CODE_URL_FILE }})  @ \`${SOURCE_BRANCH}\` (\`${SOURCE_COMMIT}\`)
           **Config**  \`$(basename "${{ env.CONFIG_FILE }}")\`
 
           ### 📦 Attached Files
