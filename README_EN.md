@@ -7,6 +7,8 @@ A GitHub Actions CI/CD project for building OpenWrt-based firmware. Supports mul
 
 > [!WARNING]
 > Only the **ImmortalWrt** workflows are actively maintained. The remaining workflows (LEDE / OpenWrt / X-Wrt) have been discontinued. They may still run but firmware may contain unresolved defects, and related issues will not be addressed. Use at your own risk.
+>
+> Discontinued workflows are provided as-is, with no guarantee of functionality. Firmware from these workflows may contain unpatched defects. No maintenance, updates, or support will be provided.
 
 > [中文文档](README.md)
 
@@ -52,6 +54,7 @@ Select `Build-immortalwrt-single.yml` → Run workflow in the Actions tab:
 - `device`: Enter the device name (e.g., `glinet_gl-mt3000`)
 - `branch`: Leave blank to use config file, or specify manually (e.g., `25.12-dev-wifi7`)
 - `config`: Leave blank for auto-selection (latest), or specify a filename
+- `diy_enabled`: Leave blank to read control file, or manually set `true` / `false` to override
 
 ## ImmortalWrt Build Pipeline
 
@@ -82,6 +85,7 @@ Select `Build-immortalwrt-single.yml` → Run workflow in the Actions tab:
 │   ├── immortalwrt-device-branch.txt          # Per-device source branch mapping
 │   ├── immortalwrt-default-branch.txt         # Default source branch (for unmatched devices)
 │   ├── immortalwrt-last-commit.txt            # Last built commit SHA per branch
+│   ├── immortalwrt-diy-control.txt            # DIY script toggle (per-device enable/disable)
 │   ├── *-url.txt                              # Source repository URLs
 │   ├── *-banner*.txt                          # LEDE custom login banner
 │   ├── x-wrt-config-tag.txt                   # X-Wrt build tag
@@ -113,6 +117,18 @@ The workflow automatically selects the latest config by timestamp for each devic
 
 Delete or comment out the corresponding line in `config/immortalwrt-mt798x-enable-configs.txt`. The config files can remain.
 
+### DIY Script Control
+
+Edit `config/immortalwrt-diy-control.txt` to control whether DIY scripts run per device. Format: `<device> <true|false>`. Unlisted devices default to `true`.
+
+Example — disable DIY for `glinet_gl-mt3600be`:
+
+```
+glinet_gl-mt3000 true
+konka_komi-a31 true
+glinet_gl-mt3600be false
+```
+
 ### Custom Build Plugins
 
 Edit `script/immortalwrt-actions-diy1.sh` to add or remove third-party packages integrated during compilation. Add new plugins at the end with: `git clone --depth 1 <URL> package/<dir> || { echo "警告: 克隆失败"; }`. Currently included:
@@ -126,7 +142,7 @@ Edit `script/immortalwrt-actions-diy1.sh` to add or remove third-party packages 
 
 ### Custom uci-defaults Configuration
 
-Edit the `LAN_IP` variable at the top of `script/immortalwrt-uci-defaults.sh` to change the default LAN address. Mirror sources in `mirrors.sh` can be modified in the `select_mirror()` function (lines 68-78).
+Edit the `LAN_IP` variable at the top of `script/immortalwrt-uci-defaults.sh` to change the default LAN address. Mirror sources in `mirrors.sh` can be modified in the `select_mirror()` function.
 
 ## uci-defaults First-Boot Configuration
 
