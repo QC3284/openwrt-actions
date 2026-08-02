@@ -432,11 +432,12 @@ jobs:
           **Source Branch**  \`${{ env.BUILD_BRANCH }}\` (\`${SOURCE_COMMIT}\`)
 
           ### 📦 Attached Files
-          - **\`*sysupgrade.bin\` / \`*factory.img\`** — Firmware images
-          - **\`*preloader.bin\` / \`*bl31-uboot.fip\`** — Bootloader files (if applicable)
-          - **\`bin.7z\`** — Full build directory archive
-          - **\`sha256sums.txt\`** — SHA256 checksums for all firmware files
-          - **\`make.log\`** — Compilation log
+          - **`*sysupgrade.bin` / `*factory.img`** — Firmware images
+          - **`*preloader.bin` / `*bl31-uboot.fip`** — Bootloader files (if applicable)
+          - **`bin.7z`** — Full build directory archive
+          - **`sha256sums.txt`** — SHA256 checksums for all firmware files
+          - **`build-info.txt`** — Build traceability (branch, commit, timestamp)
+          - **`make.log`** — Compilation log
 
           ---
           > [${{ github.workflow }} #${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
