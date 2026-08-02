@@ -61,15 +61,14 @@
 1. **check-source**：定时触发时通过 `git ls-remote` 获取源码远端最新提交，与 `config/immortalwrt-last-commit.txt` 对比；若所有设备源码均未变更则跳过编译，手动触发不检查
 2. **prepare**：读取 `config/immortalwrt-mt798x-enable-configs.txt` 中启用的设备，在 `config/immortalwrt-mt798x/` 中按文件名时间戳自动选取每个设备最新的 `.config`，生成编译矩阵
 3. **compile**（矩阵并行，每设备独立 job）：
-   - 拉取源码后，通过 `script/immortalwrt-switch-branch.sh` 按 `config/immortalwrt-device-branch.txt` 切换设备对应分支（未配置则使用 `config/immortalwrt-default-branch.txt`，默认为 `25.12`）
-    - 执行 DIY 脚本注入第三方插件（可由 `config/immortalwrt-diy-control.txt` 按设备控制），更新并安装 feeds
+   - 执行 DIY 脚本注入第三方插件（可由 `config/immortalwrt-diy-control.txt` 按设备控制），更新并安装 feeds
    - 打入 `files/etc/uci-defaults/99-custom.sh`（首次启动自动执行，见下文 uci-defaults）
    - 先 `make -j$(nproc+1)` 编译，失败自动回退 `make -j1 V=s` 定位错误
    - **成功**：打包 bin 目录 (bin.7z)，生成 `sha256sums.txt` 和 `build-info.txt`（含源码分支/提交等溯源信息），上传 Artifact 并发布 Release
    - **失败**：提取关键错误生成 `error_report.md`（输出到 Step Summary），上传日志并创建草稿 Release
-    - 支持 `concurrency` 控制：定时触发时自动取消未完成的旧执行，手动触发不受影响
-    - make.log 超过 10 万行时自动截断为首尾各 3000 行，避免上传失败
-    - `summarize` job 在编译结束后汇总所有设备结果，输出报告并清理旧 Release
+   - 支持 `concurrency` 控制：定时触发时自动取消未完成的旧执行，手动触发不受影响
+   - make.log 超过 10 万行时自动截断为首尾各 3000 行，避免上传失败
+   - `summarize` job 在编译结束后汇总所有设备结果，输出报告并清理旧 Release
 
 ## 目录结构
 
