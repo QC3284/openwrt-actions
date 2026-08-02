@@ -596,6 +596,8 @@ jobs:
       - name: 输出编译摘要 (Build Summary)
         run: |
           NOW=$(date '+%Y-%m-%d %H:%M:%S')
+          MATRIX='${{ needs.prepare.outputs.matrix }}'
+
           {
             echo "# ImmortalWrt 编译报告"
             echo ""
@@ -605,17 +607,18 @@ jobs:
             echo "| 运行时间 | ${NOW} |"
             echo "| 触发方式 | ${{ github.event_name }} |"
             echo "| 整体结果 | ${{ needs.compile.result == 'success' && '✅ 全部成功' || '⚠️ 部分失败' }} |"
+            echo "| 编译设备 | $(echo "$MATRIX" | jq -r '[.[].device] | join(\", \")') |"
             echo ""
+
             echo "---"
             echo ""
-            echo "### 各设备摘要"
+            echo "### 编译设备详情"
             echo ""
-            echo "每台设备的详细编译日志见上方各 `compile` job 的展开面板。"
+            echo "| 设备 | 芯片 |"
+            echo "|------|------|"
+            echo "$MATRIX" | jq -r '.[] | "| \`\(.device)\` | \(.chip) |"'
             echo ""
-            echo "### 链接"
-            echo ""
-            echo "- [查看 Releases](${{ github.server_url }}/${{ github.repository }}/releases)"
-            echo "- [查看所有 Artifacts](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+            echo "每台设备的详细编译日志见上方各 \`compile\` job 的展开面板（含固件文件列表、SHA256 校验、时间戳等）。"
           } >> $GITHUB_STEP_SUMMARY
 
       - name: 清理旧 Release (Clean Old Releases)
