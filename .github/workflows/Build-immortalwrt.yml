@@ -18,6 +18,7 @@ env:
   TZ: Asia/Shanghai
   OPENWRT_DIR: /workdir/openwrt
   SOURCE_CODE_URL_FILE: ${{ github.workspace }}/config/immortalwrt-url.txt
+  FW_GLOB: "*.bin *.img *.trx *.chk *.sys *.rom *.fit *.itb *.fip *.ubi"
 
 jobs:
   prepare:
@@ -449,11 +450,11 @@ jobs:
           cd "$TARGET_PATH" || { echo "::error::无法进入 $TARGET_PATH"; exit 1; }
           rm -rf packages
           echo "固件文件列表:"
-          ls -la *.bin *.img *.trx *.chk *.sys *.rom *.fit *.itb *.fip *.ubi *.7z *.log 2>/dev/null
+          ls -la $FW_GLOB *.7z *.log 2>/dev/null
 
           # 给固件文件名追加时间戳 (失败自动重试一次)
           TS_SUFFIX="_$(date +%Y%m%d%H%M)"
-          for f in *.bin *.img *.trx *.chk *.sys *.rom *.fit *.itb *.fip *.ubi; do
+          for f in $FW_GLOB; do
             [ -f "$f" ] || continue
             base="${f%.*}"
             ext="${f##*.}"
@@ -479,7 +480,7 @@ jobs:
           echo "TARGET_NAME=$TARGET_NAME" >> $GITHUB_ENV
 
           # 生成 SHA256 校验文件 (失败自动重试一次，仍失败则致命)
-          FIRMWARE_FILES=$(ls *.bin *.img *.trx *.chk *.sys *.rom *.fit *.itb *.fip *.ubi 2>/dev/null)
+          FIRMWARE_FILES=$(ls $FW_GLOB 2>/dev/null)
           if [ -n "$FIRMWARE_FILES" ]; then
             if sha256sum $FIRMWARE_FILES > sha256sums.txt 2>/dev/null; then
               echo "SHA256 校验文件已生成"
