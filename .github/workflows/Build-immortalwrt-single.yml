@@ -429,7 +429,8 @@ jobs:
 
           $(date '+%Y-%m-%d %H:%M:%S %Z') · \`${{ inputs.device }}\` · ${{ env.TARGET_NAME }}
 
-          **Source Branch**  \`${{ env.BUILD_BRANCH }}\` (\`${SOURCE_COMMIT}\`)
+          **Source**  $(cat ${{ env.SOURCE_CODE_URL_FILE }})  @ \`${{ env.BUILD_BRANCH }}\` (\`${SOURCE_COMMIT}\`)  
+          **Config**  \`$(basename "${{ env.CONFIG_FILE }}")\`
 
           ### 📦 Attached Files
           - **`*sysupgrade.bin` / `*factory.img`** — Firmware images
