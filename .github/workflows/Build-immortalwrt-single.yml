@@ -277,7 +277,7 @@ jobs:
           cat > release_failed.txt <<EOF
           ## ❌ Build Failed — \`${{ inputs.device }}\`
 
-          $(date '+%Y-%m-%d %H:%M:%S %Z') · \`${{ inputs.device }}\` · ${{ inputs.branch || 'auto' }}
+          $(date '+%Y-%m-%d %H:%M:%S %Z') · \`${{ inputs.device }}\` · ${{ env.BUILD_BRANCH }}
 
           **Source**  $(cat ${{ env.SOURCE_CODE_URL_FILE }})
 
@@ -412,6 +412,9 @@ jobs:
           EOF
           echo "build-info.txt 已生成"
 
+          # 存储源码信息供 Release 步骤使用
+          echo "SOURCE_COMMIT=${SOURCE_COMMIT}" >> $GITHUB_ENV
+
       - name: 生成 Release 信息 (Generate Release Info)
         if: steps.compile.outputs.compile_completed == 'true'
         id: release
@@ -421,7 +424,6 @@ jobs:
           echo "release_tag=$RELEASE_TAG" >> $GITHUB_OUTPUT
           echo "BUILD_DATETIME=$BUILD_DATETIME" >> $GITHUB_ENV
 
-          SOURCE_COMMIT=$(cd ${{ env.OPENWRT_DIR }} && git rev-parse --short HEAD 2>/dev/null || echo "unknown")
           cat > release.txt << EOF
           ## ✅ ImmortalWrt Build — \`${{ inputs.device }}\`
 
