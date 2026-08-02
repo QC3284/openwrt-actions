@@ -265,6 +265,47 @@ jobs:
             ${{ env.OPENWRT_DIR }}/error_report.md
           retention-days: 7
 
+      - name: 生成失败 Release 信息 (Generate Failure Release Info)
+        if: steps.compile.outputs.compile_completed == 'false'
+        id: failed_release
+        run: |
+          BUILD_DATETIME=$(date +"%Y%m%d%H%M")
+          echo "BUILD_DATETIME=$BUILD_DATETIME" >> $GITHUB_ENV
+          RELEASE_TAG="${{ inputs.device }}-failed-${BUILD_DATETIME}-${{ github.run_id }}"
+          echo "release_tag=$RELEASE_TAG" >> $GITHUB_OUTPUT
+
+          cat > release_failed.txt <<EOF
+          ## ❌ Build Failed — \`${{ inputs.device }}\`
+
+          $(date '+%Y-%m-%d %H:%M:%S %Z') · \`${{ inputs.device }}\` · ${{ inputs.branch || 'auto' }}
+
+          **Source**  $(cat ${{ env.SOURCE_CODE_URL_FILE }})
+
+          ### 🔍 Error Summary
+
+          EOF
+          cat ${{ env.OPENWRT_DIR }}/error_report.md >> release_failed.txt
+          {
+            echo ""
+            echo "---"
+            echo "> 📋 Full log: **make.log** · [${{ github.workflow }} #${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+          } >> release_failed.txt
+
+      - name: 发布失败 Release (Create Failure Release)
+        if: steps.compile.outputs.compile_completed == 'false'
+        uses: softprops/action-gh-release@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.failed_release.outputs.release_tag }}
+          name: "[编译失败] ${{ inputs.device }} - ${{ env.BUILD_DATETIME }}"
+          body_path: release_failed.txt
+          files: |
+            ${{ env.OPENWRT_DIR }}/make.log
+            ${{ env.OPENWRT_DIR }}/error_report.md
+          draft: true
+          prerelease: true
+
       # ---------- 编译成功处理 ----------
       - name: 压缩并整理固件 (Compress and Organize Firmware)
         if: steps.compile.outputs.compile_completed == 'true'
@@ -341,6 +382,26 @@ jobs:
           name: openwrt-firmware-${{ inputs.device }}
           path: ${{ env.TARGET_DIR }}/
           retention-days: 30
+
+      - name: 生成构建信息 (Generate Build Info)
+        if: steps.compile.outputs.compile_completed == 'true'
+        run: |
+          cd ${{ env.OPENWRT_DIR }}
+          SOURCE_COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+
+          cat > ${{ env.TARGET_DIR }}/build-info.txt << EOF
+          Image Builder Info
+          ==========================================
+          Build Date:    $(date '+%Y-%m-%d %H:%M:%S %Z')
+          Workflow:      ${{ github.workflow }}
+          Run ID:        ${{ github.run_id }}
+          Device:        ${{ inputs.device }}
+          Target:        ${{ env.TARGET_NAME }}
+          Source Branch: ${{ env.BUILD_BRANCH }}
+          Source Commit: ${SOURCE_COMMIT}
+          GitHub Repo:   ${{ github.repository }}
+          EOF
+          echo "build-info.txt 已生成"
 
       - name: 生成 Release 信息 (Generate Release Info)
         if: steps.compile.outputs.compile_completed == 'true'
