@@ -477,6 +477,16 @@ jobs:
           done
           echo ""
 
+          # 给 bin.7z 和 make.log 也追加时间戳
+          for f in bin.7z make.log; do
+            [ -f "$f" ] || continue
+            base="${f%.*}"
+            ext="${f##*.}"
+            newname="${base}${TS_SUFFIX}.${ext}"
+            mv "$f" "$newname" 2>/dev/null && echo "  重命名: $f -> $newname"
+          done
+          echo ""
+
           echo "TARGET_DIR=${{ env.OPENWRT_DIR }}/$TARGET_PATH" >> $GITHUB_ENV
           echo "TARGET_NAME=$TARGET_NAME" >> $GITHUB_ENV
 
