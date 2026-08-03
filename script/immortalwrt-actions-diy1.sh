@@ -10,6 +10,8 @@ set -e
 git clone -b master --single-branch --filter=blob:none https://github.com/vernesong/OpenClash p-temp/clash || { echo "警告: OpenClash 克隆失败"; }
 # 文件管理插件 quickfile
 git clone --depth 1 https://github.com/sbwml/luci-app-quickfile package/quickfile || { echo "警告: quickfile 克隆失败"; }
+# harbor 文件管理
+git clone --depth 1 https://github.com/destan19/luci-app-harbor-file package/harbor-file || { echo "警告: harbor-file 克隆失败"; }
 # proton2025 主题
 git clone --depth 1 https://github.com/ChesterGoodiny/luci-theme-proton2025 package/luci-theme-proton2025 || { echo "警告: proton2025 克隆失败"; }
 # RUN 安装工具
