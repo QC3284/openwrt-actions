@@ -165,6 +165,7 @@ Automatically embedded as `files/etc/uci-defaults/99-custom.sh` during build and
    - Dependency-free: only requires busybox ash + sed
 4. **luci-app-quickfile Detection**: If installed, auto-configures nginx UCI and restarts nginx; silently skipped otherwise
 5. **wget HSTS Initialization**: Creates `/root/.wget-hsts` if missing, preventing wget HTTPS download errors
+6. **luci-app-online-upgrade Detection**: If installed, automatically enables online firmware upgrade
 
 ## Default Firmware Info (ImmortalWrt)
 

@@ -164,6 +164,7 @@ glinet_gl-mt3600be false
    - 仅依赖 busybox ash + sed，无额外依赖
 4. **luci-app-quickfile 检测**：如已安装，自动配置 nginx UCI 并重启 nginx，未安装则静默跳过
 5. **wget HSTS 初始化**：检查 `/root/.wget-hsts`，不存在则自动创建，避免 wget https 下载异常
+6. **luci-app-online-upgrade 检测**：如已安装，自动启用在线升级功能
 
 ## 固件默认信息 (ImmortalWrt)
 

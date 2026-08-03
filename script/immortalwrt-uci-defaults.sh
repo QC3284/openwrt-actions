@@ -158,4 +158,10 @@ fi
 # 5. 初始化 wget HSTS 文件 (部分固件 wget 不会自动创建，导致 https 下载异常)
 [ ! -f /root/.wget-hsts ] && touch /root/.wget-hsts
 
+# 6. luci-app-online-upgrade 检测：如已安装，自动启用在线升级
+if [ -f /usr/bin/online-upgrade.sh ]; then
+  uci -q set online-upgrade.settings.enabled='1' 2>/dev/null
+  uci -q commit online-upgrade 2>/dev/null
+fi
+
 exit 0
