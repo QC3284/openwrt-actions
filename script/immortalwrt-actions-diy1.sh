@@ -16,6 +16,8 @@ git clone --depth 1 https://github.com/destan19/luci-app-harbor-file package/har
 git clone --depth 1 https://github.com/ChesterGoodiny/luci-theme-proton2025 package/luci-theme-proton2025 || { echo "警告: proton2025 克隆失败"; }
 # RUN 安装工具
 git clone --depth 1 https://github.com/wukongdaily/luci-app-run package/luci-app-run || { echo "警告: luci-app-run 克隆失败"; }
+# 在线升级 (适配本项目 multi-device releases)
+git clone --depth 1 https://github.com/QC3284/luci-app-online-upgrade package/luci-app-online-upgrade && cp -r "$(dirname "$0")/../files/online-upgrade-overlay/"* package/luci-app-online-upgrade/ 2>/dev/null || { echo "警告: online-upgrade 克隆失败"; }
 # quickstart + store (易有云/iStoreOS 官方)
 git clone --depth 1 https://github.com/linkease/nas-packages-luci p-temp/nas-luci && cp -r p-temp/nas-luci/luci/luci-app-quickstart package/luci-app-quickstart || { echo "警告: quickstart 克隆失败"; }
 git clone --depth 1 https://github.com/linkease/nas-packages p-temp/nas-pkg && cp -r p-temp/nas-pkg/network/services/quickstart package/quickstart || { echo "警告: quickstart 基础包失败"; }

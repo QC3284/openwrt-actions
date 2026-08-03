@@ -142,6 +142,7 @@ Edit `script/immortalwrt-actions-diy1.sh` to add or remove third-party packages 
 | luci-app-run | `wukongdaily/luci-app-run` | Run utility |
 | luci-app-quickstart | `linkease/nas-packages-luci` | Quick setup wizard |
 | luci-app-store | `linkease/istore` | App store (requires quickstart) |
+| luci-app-online-upgrade | `QC3284/luci-app-online-upgrade` | Online firmware upgrade (adapted) |
 
 ### Custom uci-defaults Configuration
 

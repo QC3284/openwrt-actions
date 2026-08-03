@@ -141,6 +141,7 @@ glinet_gl-mt3600be false
 | luci-app-run | `wukongdaily/luci-app-run` | 运行工具 |
 | luci-app-quickstart | `linkease/nas-packages-luci` | 快速设置向导 |
 | luci-app-store | `linkease/istore` | 应用商店 (依赖 quickstart) |
+| luci-app-online-upgrade | `QC3284/luci-app-online-upgrade` | 固件在线升级 (适配本项目) |
 
 ### 自定义 uci-defaults 配置
 
