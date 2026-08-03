@@ -17,7 +17,7 @@ git clone --depth 1 https://github.com/ChesterGoodiny/luci-theme-proton2025 pack
 # RUN 安装工具
 git clone --depth 1 https://github.com/wukongdaily/luci-app-run package/luci-app-run || { echo "警告: luci-app-run 克隆失败"; }
 # quickstart + store (易有云/iStoreOS 官方)
-git clone --depth 1 https://github.com/linkease/nas-packages-luci p-temp/nas-luci && cp -r p-temp/nas-luci/luci/luci-app-quickstart package/luci-app-quickstart && rm -rf p-temp/nas-luci || { echo "警告: quickstart 克隆失败"; }
-git clone --depth 1 https://github.com/linkease/istore p-temp/istore && cp -r p-temp/istore/luci/luci-app-store package/luci-app-store && cp -r p-temp/istore/luci/luci-lib-taskd package/luci-lib-taskd && cp -r p-temp/istore/luci/luci-lib-xterm package/luci-lib-xterm && rm -rf p-temp/istore || { echo "警告: store 克隆失败"; }
+git clone --depth 1 https://github.com/linkease/nas-packages-luci p-temp/nas-luci && cp -r p-temp/nas-luci/luci/luci-app-quickstart package/luci-app-quickstart || { echo "警告: quickstart 克隆失败"; }
+git clone --depth 1 https://github.com/linkease/istore p-temp/istore && cp -r p-temp/istore/luci/luci-app-store package/luci-app-store && cp -r p-temp/istore/luci/luci-lib-taskd package/luci-lib-taskd && cp -r p-temp/istore/luci/luci-lib-xterm package/luci-lib-xterm || { echo "警告: store 克隆失败"; }
 
 exit 0
