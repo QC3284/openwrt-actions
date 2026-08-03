@@ -165,6 +165,10 @@ glinet_gl-mt3600be false
 4. **luci-app-quickfile 检测**：如已安装，自动配置 nginx UCI 并重启 nginx，未安装则静默跳过
 5. **wget HSTS 初始化**：检查 `/root/.wget-hsts`，不存在则自动创建，避免 wget https 下载异常
 6. **luci-app-online-upgrade 检测**：如已安装，自动启用在线升级功能
+   - 通过 `online-upgrade.sh check` 检测 GitHub Releases 中是否有设备对应的新固件
+   - 根据 IP 自动判断国内/海外网络（国内强制启用下载代理 `ghfast.top`）
+   - 升级前自动备份配置，通过 `sysupgrade -f` 恢复
+   - 固件查找方式：从 Release 列表中按设备名前缀自动匹配最新 tag，无需手动配置
 
 ## 固件默认信息 (ImmortalWrt)
 

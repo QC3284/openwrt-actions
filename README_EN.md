@@ -166,6 +166,10 @@ Automatically embedded as `files/etc/uci-defaults/99-custom.sh` during build and
 4. **luci-app-quickfile Detection**: If installed, auto-configures nginx UCI and restarts nginx; silently skipped otherwise
 5. **wget HSTS Initialization**: Creates `/root/.wget-hsts` if missing, preventing wget HTTPS download errors
 6. **luci-app-online-upgrade Detection**: If installed, automatically enables online firmware upgrade
+   - Checks GitHub Releases for new firmware matching the device via `online-upgrade.sh check`
+   - Auto-detects CN/overseas network via IP geolocation (forces download proxy on CN)
+   - Backs up configuration before upgrade, restores via `sysupgrade -f`
+   - Matches latest release tag by device name prefix — no manual tag configuration needed
 
 ## Default Firmware Info (ImmortalWrt)
 
