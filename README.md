@@ -139,8 +139,6 @@ glinet_gl-mt3600be false
 | luci-app-harbor-file | `destan19/luci-app-harbor-file` | 文件管理 |
 | luci-theme-proton2025 | `ChesterGoodiny/luci-theme-proton2025` | 主题 |
 | luci-app-run | `wukongdaily/luci-app-run` | 运行工具 |
-| luci-app-quickstart | `linkease/nas-packages-luci` | 快速设置向导 |
-| luci-app-store | `linkease/istore` | 应用商店 (依赖 quickstart) |
 | luci-app-online-upgrade | `QC3284/luci-app-online-upgrade` (v2.0.0) | 固件在线升级——已适配本项目多设备 Release 列表匹配 |
 
 ### 自定义 uci-defaults 配置

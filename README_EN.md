@@ -140,8 +140,6 @@ Edit `script/immortalwrt-actions-diy1.sh` to add or remove third-party packages 
 | luci-app-harbor-file | `destan19/luci-app-harbor-file` | File manager |
 | luci-theme-proton2025 | `ChesterGoodiny/luci-theme-proton2025` | Theme |
 | luci-app-run | `wukongdaily/luci-app-run` | Run utility |
-| luci-app-quickstart | `linkease/nas-packages-luci` | Quick setup wizard |
-| luci-app-store | `linkease/istore` | App store (requires quickstart) |
 | luci-app-online-upgrade | `QC3284/luci-app-online-upgrade` (v2.0.0) | Online firmware upgrade — adapted for multi-device release list matching |
 
 ### Custom uci-defaults Configuration
