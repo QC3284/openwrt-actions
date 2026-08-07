@@ -7,7 +7,7 @@ set -e
 
 # 用途：feeds update 之前执行的 DIY 脚本 (在 Build-immortalwrt.yml 中调用)
 # 功能：克隆第三方软件包到源码树，供后续编译使用
-git clone -b dev --single-branch --filter=blob:none https://github.com/vernesong/OpenClash p-temp/clash || { echo "警告: OpenClash 克隆失败"; }
+git clone -b dev --single-branch --filter=blob:none https://github.com/vernesong/OpenClash p-temp/clash || { echo "错误: OpenClash 克隆失败"; exit 1; }
 # 文件管理插件 quickfile
 git clone --depth 1 https://github.com/sbwml/luci-app-quickfile package/quickfile || { echo "警告: quickfile 克隆失败"; }
 # harbor 文件管理

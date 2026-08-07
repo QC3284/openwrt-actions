@@ -1,6 +1,9 @@
 # File: Build-immortalwrt-single.yml — ImmortalWrt 单设备手动编译
 # Copyright (c) 2024-2026 QC3284. GPL-3.0-only.
 # https://github.com/QC3284/openwrt-actions
+#
+# ⚠️ 同步提醒：本文件与 Build-immortalwrt.yml 共享约 70% 编译逻辑。
+# 修改编译流程（setup/compile/package/release）时，请同步检查另一个文件是否需要相同更新。
 
 name: 编译 ImmortalWrt 单设备 (Single Device Build)
 
@@ -29,7 +32,7 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event_name }}
-  cancel-in-progress: ${{ github.event_name == 'schedule' }}
+  cancel-in-progress: false
 
 env:
   TZ: Asia/Shanghai
@@ -57,11 +60,12 @@ jobs:
           CONFIG_DIR="${{ github.workspace }}/config/immortalwrt-mt798x"
           BRANCH_FILE="${{ github.workspace }}/config/immortalwrt-device-branch.txt"
           DEFAULT_BRANCH_FILE="${{ github.workspace }}/config/immortalwrt-default-branch.txt"
-          DEFAULT_BRANCH="25.12"
-          if [ -f "$DEFAULT_BRANCH_FILE" ]; then
-            PARSED=$(head -1 "$DEFAULT_BRANCH_FILE" | tr -d '[:space:]')
-            [ -n "$PARSED" ] && DEFAULT_BRANCH="$PARSED"
+          if [ ! -f "$DEFAULT_BRANCH_FILE" ]; then
+            echo "::error::默认分支配置文件不存在: $DEFAULT_BRANCH_FILE"
+            exit 1
           fi
+          DEFAULT_BRANCH=$(head -1 "$DEFAULT_BRANCH_FILE" | tr -d '[:space:]')
+          [ -n "$DEFAULT_BRANCH" ] || { echo "::error::默认分支配置为空"; exit 1; }
 
           # 确定配置文件
           if [ -n "$CONFIG_OVERRIDE" ]; then
@@ -102,7 +106,7 @@ jobs:
           else
             BRANCH="$DEFAULT_BRANCH"
             if [ -f "$BRANCH_FILE" ]; then
-              MATCH=$(grep -v '^[[:space:]]*#' "$BRANCH_FILE" | awk -v d="$DEVICE" '$1 == d {print $2; exit}')
+              MATCH=$(grep -v '^[[:space:]]*\(#.*\|$\)' "$BRANCH_FILE" | awk -v d="$DEVICE" '$1 == d {print $2; exit}')
               [ -n "$MATCH" ] && BRANCH="$MATCH"
             fi
             echo "分支 (配置): $BRANCH"
@@ -120,7 +124,7 @@ jobs:
       - name: 创建工作目录 (Create Work Directory)
         run: |
           sudo mkdir -p /workdir
-          sudo chown $USER:$GROUPS /workdir
+          sudo chown "$(id -u):$(id -g)" /workdir
 
       - name: 释放磁盘空间 (Free Disk Space)
         uses: jlumbroso/free-disk-space@v1.3.1
@@ -150,7 +154,9 @@ jobs:
       - name: 拉取源码 (Pull Source Code)
         working-directory: /workdir
         run: |
-          git clone $(cat ${{ env.SOURCE_CODE_URL_FILE }}) openwrt
+          URL="$(cat "${{ env.SOURCE_CODE_URL_FILE }}")"
+          echo "源码 URL: $URL"
+          git clone "$URL" openwrt
 
       - name: 链接源码目录 (Link Source Code Directory)
         run: |
@@ -201,7 +207,7 @@ jobs:
         id: compile
         working-directory: ${{ env.OPENWRT_DIR }}
         run: |
-          THREAD_COUNT=$(($(nproc) + 1))
+          THREAD_COUNT=$(nproc)
           echo "使用 $THREAD_COUNT 线程编译"
           make -j$THREAD_COUNT 2>&1 | tee make.log
           EXIT_CODE=${PIPESTATUS[0]}
@@ -280,7 +286,7 @@ jobs:
 
           $(date '+%Y-%m-%d %H:%M:%S %Z') · \`${{ inputs.device }}\` · ${{ env.BUILD_BRANCH }}
 
-          **Source**  $(cat ${{ env.SOURCE_CODE_URL_FILE }})
+          **Source**  $(cat "${{ env.SOURCE_CODE_URL_FILE }}")
 
           ### 🔍 Error Summary
 
@@ -312,8 +318,6 @@ jobs:
         if: steps.compile.outputs.compile_completed == 'true'
         working-directory: ${{ env.OPENWRT_DIR }}
         run: |
-          set +e
-
           TARGET_PATH=$(find bin/targets -mindepth 2 -maxdepth 2 -type d | head -n 1)
           if [ -z "$TARGET_PATH" ]; then
             echo "::warning::未找到编译输出目录，跳过固件打包"
@@ -333,7 +337,7 @@ jobs:
           mv make.log "$TARGET_PATH/"
           cd "$TARGET_PATH" || { echo "::error::无法进入 $TARGET_PATH"; exit 1; }
           rm -rf packages
-          ls -la $FW_GLOB *.7z *.log 2>/dev/null
+          ls -la $FW_GLOB *.7z *.log 2>/dev/null || true
 
           # 给固件文件名追加时间戳 (失败自动重试一次)
           TS_SUFFIX="_$(date +%Y%m%d%H%M)"
@@ -385,14 +389,6 @@ jobs:
             fi
           fi
 
-      - name: 上传固件 Artifact (Upload Firmware Artifact)
-        if: steps.compile.outputs.compile_completed == 'true'
-        uses: actions/upload-artifact@v7.0.1
-        with:
-          name: openwrt-firmware-${{ inputs.device }}
-          path: ${{ env.TARGET_DIR }}/
-          retention-days: 30
-
       - name: 生成构建信息 (Generate Build Info)
         if: steps.compile.outputs.compile_completed == 'true'
         run: |
@@ -416,6 +412,14 @@ jobs:
           # 存储源码信息供 Release 步骤使用
           echo "SOURCE_COMMIT=${SOURCE_COMMIT}" >> $GITHUB_ENV
 
+      - name: 上传固件 Artifact (Upload Firmware Artifact)
+        if: steps.compile.outputs.compile_completed == 'true'
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: openwrt-firmware-${{ inputs.device }}
+          path: ${{ env.TARGET_DIR }}/
+          retention-days: 30
+
       - name: 生成 Release 信息 (Generate Release Info)
         if: steps.compile.outputs.compile_completed == 'true'
         id: release
@@ -430,7 +434,7 @@ jobs:
 
           $(date '+%Y-%m-%d %H:%M:%S %Z') · \`${{ inputs.device }}\` · ${{ env.TARGET_NAME }}
 
-          **Source**  $(cat ${{ env.SOURCE_CODE_URL_FILE }})  @ \`${{ env.BUILD_BRANCH }}\` (\`${SOURCE_COMMIT}\`)  
+          **Source**  $(cat "${{ env.SOURCE_CODE_URL_FILE }}")  @ \`${{ env.BUILD_BRANCH }}\` (\`${SOURCE_COMMIT}\`)  
           **Config**  \`$(basename "${{ env.CONFIG_FILE }}")\`
 
           ### 📦 Attached Files

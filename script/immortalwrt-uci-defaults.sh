@@ -27,6 +27,7 @@ if [ -x /etc/init.d/sshd ]; then
   /etc/init.d/sshd enable 2>/dev/null
 
   # 允许 root 用户密码登录 (直接修改 sshd_config)
+  [ -f /etc/ssh/sshd_config ] || touch /etc/ssh/sshd_config
   sed -i -e 's/^[[:space:]]*#[[:space:]]*\(PermitRootLogin\)/\1/' -e 's/^[[:space:]]*PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config 2>/dev/null
   grep -q '^PermitRootLogin' /etc/ssh/sshd_config 2>/dev/null || echo 'PermitRootLogin yes' >> /etc/ssh/sshd_config
   # 使配置生效

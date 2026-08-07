@@ -89,4 +89,4 @@ jobs:
           git commit -m "Clean old build configs [skip ci]
 
           - 每个设备仅保留最新配置，其余归档至 old_configs/"
-          git push || echo "::warning::git push 失败，可能远程有冲突，下次执行时重试"
+          git push || { echo "::error::git push 失败，下次执行时将自动重试"; }

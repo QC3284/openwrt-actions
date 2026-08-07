@@ -10,8 +10,10 @@ set -e
 if [ -d p-temp/clash/luci-app-openclash ]; then
   rm -rf feeds/luci/applications/luci-app-openclash
   mv p-temp/clash/luci-app-openclash feeds/luci/applications/luci-app-openclash
+else
+  echo "警告: p-temp/clash/luci-app-openclash 不存在，跳过 OpenClash 替换"
 fi
 # 清理临时目录
-rm -rf p-temp
+[ -d p-temp ] && rm -rf p-temp
 
 exit 0

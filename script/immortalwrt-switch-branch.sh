@@ -9,13 +9,15 @@ set -e
 
 DEVICE="${1:-$DEVICE_NAME}"
 REPO_DIR="${2:-${OPENWRT_DIR:-.}}"
-BRANCH_FILE="${3:-$(dirname "$0")/../config/immortalwrt-device-branch.txt}"
-DEFAULT_BRANCH_FILE="${4:-$(dirname "$0")/../config/immortalwrt-default-branch.txt}"
-DEFAULT_BRANCH="25.12"
-if [ -f "$DEFAULT_BRANCH_FILE" ]; then
-  PARSED=$(head -1 "$DEFAULT_BRANCH_FILE" | tr -d '[:space:]')
-  [ -n "$PARSED" ] && DEFAULT_BRANCH="$PARSED"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+BRANCH_FILE="${3:-$SCRIPT_DIR/../config/immortalwrt-device-branch.txt}"
+DEFAULT_BRANCH_FILE="${4:-$SCRIPT_DIR/../config/immortalwrt-default-branch.txt}"
+if [ ! -f "$DEFAULT_BRANCH_FILE" ]; then
+  echo "错误: 默认分支配置文件不存在: $DEFAULT_BRANCH_FILE"
+  exit 1
 fi
+DEFAULT_BRANCH=$(head -1 "$DEFAULT_BRANCH_FILE" | tr -d '[:space:]')
+[ -n "$DEFAULT_BRANCH" ] || { echo "错误: 默认分支配置为空"; exit 1; }
 echo "默认分支: $DEFAULT_BRANCH"
 
 if [ -z "$DEVICE" ]; then

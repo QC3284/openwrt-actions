@@ -1,12 +1,16 @@
 # File: Build-immortalwrt.yml — ImmortalWrt 多设备矩阵编译
+# Cron: 周二/五 19:00 UTC = 周三/六 03:00 北京时间
 # Copyright (c) 2024-2026 QC3284. GPL-3.0-only.
 # https://github.com/QC3284/openwrt-actions
+#
+# ⚠️ 同步提醒：本文件与 Build-immortalwrt-single.yml 共享约 70% 编译逻辑。
+# 修改编译流程（setup/compile/package/release）时，请同步检查另一个文件是否需要相同更新。
 
 name: 编译 ImmortalWrt (Compile ImmortalWrt)
 
 on:
   schedule:
-    - cron: '0 3 * * 3,6'
+    - cron: '0 19 * * 2,5'
   repository_dispatch:
   workflow_dispatch:
 
@@ -35,14 +39,16 @@ jobs:
 
       - name: 检查源码是否更新 (Check Source Updates)
         id: check-source
+        timeout-minutes: 5
         run: |
-          SOURCE_URL=$(cat ${{ env.SOURCE_CODE_URL_FILE }})
+          SOURCE_URL=$(cat "${{ env.SOURCE_CODE_URL_FILE }}")
           DEFAULT_BRANCH_FILE="${{ github.workspace }}/config/immortalwrt-default-branch.txt"
-          DEFAULT_BRANCH="25.12"
-          if [ -f "$DEFAULT_BRANCH_FILE" ]; then
-            PARSED=$(head -1 "$DEFAULT_BRANCH_FILE" | tr -d '[:space:]')
-            [ -n "$PARSED" ] && DEFAULT_BRANCH="$PARSED"
+          if [ ! -f "$DEFAULT_BRANCH_FILE" ]; then
+            echo "::error::默认分支配置文件不存在: $DEFAULT_BRANCH_FILE"
+            exit 1
           fi
+          DEFAULT_BRANCH=$(head -1 "$DEFAULT_BRANCH_FILE" | tr -d '[:space:]')
+          [ -n "$DEFAULT_BRANCH" ] || { echo "::error::默认分支配置为空"; exit 1; }
           echo "源码仓库: $SOURCE_URL"
           echo "默认分支: $DEFAULT_BRANCH"
 
@@ -50,7 +56,7 @@ jobs:
           ENABLE_FILE="${{ github.workspace }}/config/immortalwrt-mt798x-enable-configs.txt"
           TRACK_FILE="${{ github.workspace }}/config/immortalwrt-last-commit.txt"
 
-          mapfile -t ENABLED_DEVICES < <(grep -v '^[[:space:]]*#' "$ENABLE_FILE" | grep -v '^[[:space:]]*$')
+          mapfile -t ENABLED_DEVICES < <(grep -v '^[[:space:]]*\(#.*\|$\)' "$ENABLE_FILE")
 
           get_branch() {
             local dev=$1
@@ -64,7 +70,7 @@ jobs:
 
           load_stored() {
             if [ -f "$TRACK_FILE" ]; then
-              grep -v '^[[:space:]]*#' "$TRACK_FILE" | grep -v '^[[:space:]]*$'
+              grep -v '^[[:space:]]*\(#.*\|$\)' "$TRACK_FILE"
             fi
           }
 
@@ -118,7 +124,9 @@ jobs:
                 break
               fi
             done
-            if awk -F= -v b="$branch" '$1 == b {exit 1}' "$TRACK_FILE" 2>/dev/null; then
+            if [ ! -f "$TRACK_FILE" ]; then
+              echo "${branch}=${commit}" >> "$TRACK_FILE"
+            elif awk -F= -v b="$branch" '$1 == b {exit 1}' "$TRACK_FILE" 2>/dev/null; then
               echo "${branch}=${commit}" >> "$TRACK_FILE"
             else
               sed -i "s|^${branch}=.*|${branch}=${commit}|" "$TRACK_FILE"
@@ -164,7 +172,7 @@ jobs:
             exit 1
           fi
 
-          mapfile -t ENABLED_DEVICES < <(grep -v '^[[:space:]]*#' "$ENABLE_FILE" | grep -v '^[[:space:]]*$')
+          mapfile -t ENABLED_DEVICES < <(grep -v '^[[:space:]]*\(#.*\|$\)' "$ENABLE_FILE")
           if [ ${#ENABLED_DEVICES[@]} -eq 0 ]; then
             echo "::error::启用配置文件中未包含任何设备"
             exit 1
@@ -235,7 +243,7 @@ jobs:
       - name: 创建工作目录 (Create Work Directory)
         run: |
           sudo mkdir -p /workdir
-          sudo chown $USER:$GROUPS /workdir
+          sudo chown "$(id -u):$(id -g)" /workdir
 
       - name: 释放磁盘空间 (Free Disk Space)
         uses: jlumbroso/free-disk-space@v1.3.1
@@ -265,7 +273,9 @@ jobs:
       - name: 拉取源码 (Pull Source Code)
         working-directory: /workdir
         run: |
-          git clone $(cat ${{ env.SOURCE_CODE_URL_FILE }}) openwrt
+          URL="$(cat "${{ env.SOURCE_CODE_URL_FILE }}")"
+          echo "源码 URL: $URL"
+          git clone "$URL" openwrt
 
       - name: 链接源码目录 (Link Source Code Directory)
         run: |
@@ -309,7 +319,7 @@ jobs:
         id: compile
         working-directory: ${{ env.OPENWRT_DIR }}
         run: |
-          THREAD_COUNT=$(($(nproc) + 1))
+          THREAD_COUNT=$(nproc)
           echo "使用 $THREAD_COUNT 线程编译"
 
           # 记录退出码，不中断脚本以便后续处理
@@ -395,7 +405,7 @@ jobs:
 
           $(date '+%Y-%m-%d %H:%M:%S %Z') · \`${{ matrix.device }}\` · ${{ matrix.chip }}
 
-          **Source**  $(cat ${{ env.SOURCE_CODE_URL_FILE }})
+          **Source**  $(cat "${{ env.SOURCE_CODE_URL_FILE }}")
           **Config**  \`$(basename "${{ env.CONFIG_FILE }}")\`
 
           ### 🔍 Error Summary
@@ -429,8 +439,6 @@ jobs:
         if: steps.compile.outputs.compile_completed == 'true'
         working-directory: ${{ env.OPENWRT_DIR }}
         run: |
-          set +e
-
           # 动态探测输出目录 (bin/targets/<target>/<subtarget>)，兼容不同芯片/平台
           TARGET_PATH=$(find bin/targets -mindepth 2 -maxdepth 2 -type d | head -n 1)
           if [ -z "$TARGET_PATH" ]; then
@@ -452,7 +460,7 @@ jobs:
           cd "$TARGET_PATH" || { echo "::error::无法进入 $TARGET_PATH"; exit 1; }
           rm -rf packages
           echo "固件文件列表:"
-          ls -la $FW_GLOB *.7z *.log 2>/dev/null
+          ls -la $FW_GLOB *.7z *.log 2>/dev/null || true
 
           # 给固件文件名追加时间戳 (失败自动重试一次)
           TS_SUFFIX="_$(date +%Y%m%d%H%M)"
@@ -524,7 +532,7 @@ jobs:
           Chip:          ${{ matrix.chip }}
           Target:        ${{ env.TARGET_NAME }}
           Config:        $(basename "${{ env.CONFIG_FILE }}")
-          Source Repo:   $(cat ${{ env.SOURCE_CODE_URL_FILE }})
+          Source Repo:   $(cat "${{ env.SOURCE_CODE_URL_FILE }}")
           Source Branch: ${SOURCE_BRANCH}
           Source Commit: ${SOURCE_COMMIT}
           GitHub Repo:   ${{ github.repository }}
@@ -561,7 +569,7 @@ jobs:
 
           $(date '+%Y-%m-%d %H:%M:%S %Z') · \`${{ matrix.device }}\` · ${{ matrix.chip }} · ${{ env.TARGET_NAME }}
 
-          **Source**  $(cat ${{ env.SOURCE_CODE_URL_FILE }})  @ \`${SOURCE_BRANCH}\` (\`${SOURCE_COMMIT}\`)
+          **Source**  $(cat "${{ env.SOURCE_CODE_URL_FILE }}")  @ \`${SOURCE_BRANCH}\` (\`${SOURCE_COMMIT}\`)
           **Config**  \`$(basename "${{ env.CONFIG_FILE }}")\`
 
           ### 📦 Attached Files
