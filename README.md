@@ -98,7 +98,7 @@
     ├── lede-github-actions-rl.sh     # LEDE: 生成 Release 说明
     ├── x-wrt-actions-txt-001.sh      # X-Wrt: 生成 Release 说明
     ├── x-wrt-git-001.sh              # 替换 coremark 包
-    ├── x-wrt-make-001.sh             # 预下载依赖并清理残缺包 (ImmortalWrt/X-Wrt 共用)
+    ├── x-wrt-make-001.sh             # 预下载依赖并清理残缺包 (ImmortalWrt 编译前调用)
     └── gitcj.py + giturl.txt         # 批量克隆第三方 luci 插件
 ```
 

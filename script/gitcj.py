@@ -5,11 +5,25 @@
 import subprocess
 import os
 import re
+from urllib.parse import urlparse
 
 # 安全地克隆 git 仓库 (不使用 shell=True，防止命令注入)
 def git_clone(url, depth=1):
-    if not re.match(r'^https://[a-zA-Z0-9._/\-:@]+$', url):
-        print(f"警告: 不安全的 URL 格式，已跳过: {url}")
+    # 仅允许 HTTPS 协议，验证域名基本结构
+    try:
+        parsed = urlparse(url)
+    except Exception:
+        print(f"警告: 无法解析 URL，已跳过: {url}")
+        return False
+    if parsed.scheme != 'https':
+        print(f"警告: 仅支持 HTTPS 协议，已跳过: {url}")
+        return False
+    if not parsed.netloc or '.' not in parsed.netloc:
+        print(f"警告: 无效域名，已跳过: {url}")
+        return False
+    # 额外校验: 路径仅允许安全字符
+    if parsed.path and not re.match(r'^/[a-zA-Z0-9._\-/@~%]+$', parsed.path):
+        print(f"警告: URL 路径包含不安全字符，已跳过: {url}")
         return False
     cmd = ["git", "clone", "--depth", str(depth), url]
     try:

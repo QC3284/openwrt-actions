@@ -81,23 +81,15 @@ replace_mirror() {
   # 替换前备份 (仅首次)
   bak="${f}.bak"
   [ -f "$f" ] && [ ! -f "$bak" ] && cp "$f" "$bak"
-  # 先用占位符 __M__ 替换所有远端 URL (避免结果被后续匹配再次替换)
-  # 已知镜像路径前缀 /openwrt, /immortalwrt, /lede 会被去除
-  if sed -r \
-       -e "s@https?://[^/]+(/openwrt|/immortalwrt|/lede)?/@__M__@g" \
-       -e "s@__M__@${MIRROR}${PREFIX}/@g" \
-       "$f" > "$t" 2>/dev/null; then
-    :
-  else
-    # busybox 不支持 -r 时回退：多次匹配但不重复处理
-    sed \
-      -e "s@https\?://[^/]*/openwrt/@__M__@g" \
-      -e "s@https\?://[^/]*/immortalwrt/@__M__@g" \
-      -e "s@https\?://[^/]*/lede/@__M__@g" \
-      -e "s@https\?://[^/]*/@__M__@g" \
-      -e "s@__M__@${MIRROR}${PREFIX}/@g" \
-      "$f" > "$t"
-  fi
+  # 占位符技巧: 先用 __M__ 替换所有远端 URL，再替换为目标镜像
+  # 兼容 busybox sed (不使用 GNU -r 扩展)，依次匹配已知前缀避免重复处理
+  sed \
+    -e "s@https\?://[^/]*/openwrt/@__M__@g" \
+    -e "s@https\?://[^/]*/immortalwrt/@__M__@g" \
+    -e "s@https\?://[^/]*/lede/@__M__@g" \
+    -e "s@https\?://[^/]*/@__M__@g" \
+    -e "s@__M__@${MIRROR}${PREFIX}/@g" \
+    "$f" > "$t"
   mv "$t" "$f" && echo "已更新: $f"
   rm -f "$t"
 }

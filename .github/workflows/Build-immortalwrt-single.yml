@@ -37,9 +37,11 @@ concurrency:
 env:
   TZ: Asia/Shanghai
   OPENWRT_DIR: /workdir/openwrt
-  FW_GLOB: "*.bin *.img *.trx *.chk *.sys *.rom *.fit *.itb *.fip *.ubi"
+  FW_GLOB: "*.bin *.img *.fit *.itb *.fip *.ubi"
   ERROR_PATTERN: 'error:|error [0-9]+|fatal|FAILED|collect2|No rule to make target|make\[[0-9]+\].*Error|Segmentation fault|undefined reference|No such file|cannot find|patch.*failed|Hunk.*FAILED'
   SOURCE_CODE_URL_FILE: ${{ github.workspace }}/config/immortalwrt-url.txt
+  LOG_TRUNCATE_LINES: 100000
+  LOG_KEEP_LINES: 3000
 
 jobs:
   build:
@@ -164,10 +166,12 @@ jobs:
 
       - name: 切换源码分支 (Switch Source Branch)
         run: |
-          cd ${{ env.OPENWRT_DIR }}
-          git fetch origin "$BUILD_BRANCH"
-          git checkout -B "$BUILD_BRANCH" "origin/$BUILD_BRANCH"
-          echo "当前分支: $(git branch --show-current)"
+          bash ${{ github.workspace }}/script/immortalwrt-switch-branch.sh \
+            "$DEVICE_NAME" \
+            "${{ env.OPENWRT_DIR }}" \
+            "${{ github.workspace }}/config/immortalwrt-device-branch.txt" \
+            "${{ github.workspace }}/config/immortalwrt-default-branch.txt" \
+            "$BUILD_BRANCH"
 
       - name: 更新并安装 Feeds (Update and Install Feeds)
         working-directory: ${{ env.OPENWRT_DIR }}
@@ -231,13 +235,13 @@ jobs:
           fi
 
           LOG_LINES=$(wc -l < make.log)
-          if [ "$LOG_LINES" -gt 100000 ]; then
-            echo "make.log 过大 ($LOG_LINES 行), 保留首尾各 3000 行"
-            head -3000 make.log > make.log.tmp
+          if [ "$LOG_LINES" -gt "$LOG_TRUNCATE_LINES" ]; then
+            echo "make.log 过大 ($LOG_LINES 行), 保留首尾各 $LOG_KEEP_LINES 行"
+            head -$LOG_KEEP_LINES make.log > make.log.tmp
             echo "" >> make.log.tmp
-            echo "...... [中间省略 $((LOG_LINES - 6000)) 行] ......" >> make.log.tmp
+            echo "...... [中间省略 $((LOG_LINES - LOG_KEEP_LINES * 2)) 行] ......" >> make.log.tmp
             echo "" >> make.log.tmp
-            tail -3000 make.log >> make.log.tmp
+            tail -$LOG_KEEP_LINES make.log >> make.log.tmp
             mv make.log.tmp make.log
             echo "make.log 已截断至 $(wc -l < make.log) 行"
           fi

@@ -74,7 +74,6 @@ jobs:
       - name: 校验配置文件 (Validate Config Files)
         run: |
           echo "=== 检查配置完整性 ==="
-          # 检查必需的配置文件是否存在
           MISSING=0
           for f in config/immortalwrt-url.txt config/immortalwrt-mt798x-enable-configs.txt config/immortalwrt-device-branch.txt config/immortalwrt-default-branch.txt config/immortalwrt-last-commit.txt config/immortalwrt-diy-control.txt; do
             if [ -f "$f" ]; then
@@ -87,3 +86,102 @@ jobs:
           if [ $MISSING -ne 0 ]; then
             echo "::warning::部分配置文件缺失，编译工作流可能无法运行"
           fi
+
+      - name: 校验配置文件内容格式 (Validate Config Content)
+        run: |
+          echo "=== 检查配置文件内容格式 ==="
+          FAIL=0
+
+          # immortalwrt-mt798x-enable-configs.txt: 非空行即有效设备名
+          ENABLE_FILE="config/immortalwrt-mt798x-enable-configs.txt"
+          if [ -f "$ENABLE_FILE" ]; then
+            COUNT=$(grep -cv '^[[:space:]]*\(#.*\|$\)' "$ENABLE_FILE" || echo 0)
+            if [ "$COUNT" -eq 0 ]; then
+              echo "  ❌ $ENABLE_FILE 未包含任何启用的设备"
+              FAIL=1
+            else
+              echo "  ✅ $ENABLE_FILE ($COUNT 个设备)"
+            fi
+          fi
+
+          # immortalwrt-device-branch.txt: 格式 <设备名> <分支名>
+          BRANCH_FILE="config/immortalwrt-device-branch.txt"
+          if [ -f "$BRANCH_FILE" ]; then
+            INVALID=$(grep -v '^[[:space:]]*\(#.*\|$\)' "$BRANCH_FILE" | awk 'NF != 2 {print}')
+            if [ -n "$INVALID" ]; then
+              echo "  ❌ $BRANCH_FILE 格式错误 (需 <设备名> <分支名>):"
+              echo "$INVALID"
+              FAIL=1
+            else
+              echo "  ✅ $BRANCH_FILE"
+            fi
+          fi
+
+          # immortalwrt-last-commit.txt: 格式 <分支>=<SHA>
+          TRACK_FILE="config/immortalwrt-last-commit.txt"
+          if [ -f "$TRACK_FILE" ]; then
+            INVALID=$(grep -v '^[[:space:]]*\(#.*\|$\)' "$TRACK_FILE" | grep -vE '^[a-zA-Z0-9._-]+=[a-f0-9]{40}$' || true)
+            if [ -n "$INVALID" ]; then
+              echo "  ❌ $TRACK_FILE 格式错误 (需 <分支>=<40位SHA>):"
+              echo "$INVALID"
+              FAIL=1
+            else
+              echo "  ✅ $TRACK_FILE"
+            fi
+          fi
+
+          # immortalwrt-diy-control.txt: 值必须为 true/false
+          DIY_FILE="config/immortalwrt-diy-control.txt"
+          if [ -f "$DIY_FILE" ]; then
+            INVALID=$(grep -v '^[[:space:]]*\(#.*\|$\)' "$DIY_FILE" | awk '$2 != "true" && $2 != "false" {print}')
+            if [ -n "$INVALID" ]; then
+              echo "  ❌ $DIY_FILE 值必须为 true/false:"
+              echo "$INVALID"
+              FAIL=1
+            else
+              echo "  ✅ $DIY_FILE"
+            fi
+          fi
+
+          # immortalwrt-default-branch.txt: 非空
+          DEFAULT_BRANCH_FILE="config/immortalwrt-default-branch.txt"
+          if [ -f "$DEFAULT_BRANCH_FILE" ]; then
+            BRANCH=$(head -1 "$DEFAULT_BRANCH_FILE" | tr -d '[:space:]')
+            if [ -z "$BRANCH" ]; then
+              echo "  ❌ $DEFAULT_BRANCH_FILE 为空"
+              FAIL=1
+            else
+              echo "  ✅ $DEFAULT_BRANCH_FILE ($BRANCH)"
+            fi
+          fi
+
+          # .config 文件: 检查是否为有效的 OpenWrt 配置
+          echo ""
+          echo "=== 检查设备配置文件 ==="
+          CONFIG_DIR="config/immortalwrt-mt798x"
+          if [ -d "$CONFIG_DIR" ]; then
+            CONFIG_COUNT=0
+            while IFS= read -r -d '' f; do
+              CONFIG_COUNT=$((CONFIG_COUNT + 1))
+              if grep -q '^CONFIG_TARGET' "$f" 2>/dev/null; then
+                echo "  ✅ $(basename "$f")"
+              else
+                echo "  ⚠️ $(basename "$f") (缺少 CONFIG_TARGET 条目，可能无效)"
+              fi
+            done < <(find "$CONFIG_DIR" -maxdepth 1 -type f -name "*.config" -print0 2>/dev/null)
+            echo "  共 $CONFIG_COUNT 个配置文件"
+          fi
+
+          if [ $FAIL -ne 0 ]; then
+            echo "::error::配置文件内容格式校验失败"
+            exit 1
+          fi
+          echo ""
+          echo "全部通过"
+
+      - name: ShellCheck (静态分析 Shell 脚本)
+        uses: ludeeus/action-shellcheck@master
+        with:
+          scandir: './script'
+          severity: warning
+          ignore: immortalwrt-uci-defaults.sh

@@ -3,15 +3,25 @@
 # Copyright (c) 2024-2026 QC3284. GPL-3.0-only.
 # https://github.com/QC3284/openwrt-actions
 
-# 用法: bash immortalwrt-switch-branch.sh <设备名> [源码目录] [配置文件]
+# 用法: bash immortalwrt-switch-branch.sh <设备名> <源码目录> <设备分支文件> [默认分支文件] [显式分支]
+#   显式分支: 可选，指定后跳过配置文件查找直接使用该分支 (但仍做远端存在性校验)
 
-set -e
+set -euo pipefail
 
 DEVICE="${1:-$DEVICE_NAME}"
 REPO_DIR="${2:-${OPENWRT_DIR:-.}}"
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-BRANCH_FILE="${3:-$SCRIPT_DIR/../config/immortalwrt-device-branch.txt}"
-DEFAULT_BRANCH_FILE="${4:-$SCRIPT_DIR/../config/immortalwrt-default-branch.txt}"
+
+# 确定仓库根目录: 优先使用 GITHUB_WORKSPACE，其次基于脚本位置推导
+if [ -n "${GITHUB_WORKSPACE:-}" ] && [ -d "$GITHUB_WORKSPACE/config" ]; then
+  ROOT_DIR="$GITHUB_WORKSPACE"
+else
+  SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+  ROOT_DIR="${SCRIPT_DIR}/.."
+fi
+
+BRANCH_FILE="${3:-$ROOT_DIR/config/immortalwrt-device-branch.txt}"
+DEFAULT_BRANCH_FILE="${4:-$ROOT_DIR/config/immortalwrt-default-branch.txt}"
+EXPLICIT_BRANCH="${5:-}"
 if [ ! -f "$DEFAULT_BRANCH_FILE" ]; then
   echo "错误: 默认分支配置文件不存在: $DEFAULT_BRANCH_FILE"
   exit 1
@@ -25,8 +35,11 @@ if [ -z "$DEVICE" ]; then
   exit 1
 fi
 
-BRANCH="$DEFAULT_BRANCH"
-if [ -f "$BRANCH_FILE" ]; then
+if [ -n "$EXPLICIT_BRANCH" ]; then
+  BRANCH="$EXPLICIT_BRANCH"
+  echo "使用显式指定的分支: $BRANCH"
+elif [ -f "$BRANCH_FILE" ]; then
+  BRANCH="$DEFAULT_BRANCH"
   MATCH=$(grep -v '^[[:space:]]*#' "$BRANCH_FILE" | awk -v dev="$DEVICE" '$1 == dev {print $2; exit}')
   if [ -n "$MATCH" ]; then
     BRANCH="$MATCH"
@@ -35,6 +48,7 @@ if [ -f "$BRANCH_FILE" ]; then
     echo "设备 [$DEVICE] 未在配置文件中，使用默认分支: $BRANCH"
   fi
 else
+  BRANCH="$DEFAULT_BRANCH"
   echo "警告: 配置文件不存在 ($BRANCH_FILE)，使用默认分支: $BRANCH"
 fi
 

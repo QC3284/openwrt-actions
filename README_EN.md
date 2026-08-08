@@ -99,7 +99,7 @@ Select `Build-immortalwrt-single.yml` → Run workflow in the Actions tab:
     ├── lede-github-actions-rl.sh     # LEDE: generate release notes
     ├── x-wrt-actions-txt-001.sh      # X-Wrt: generate release notes
     ├── x-wrt-git-001.sh              # Replace coremark package
-    ├── x-wrt-make-001.sh             # Pre-download dependencies, clean incomplete files (shared by ImmortalWrt/X-Wrt)
+    ├── x-wrt-make-001.sh             # Pre-download dependencies, clean incomplete files (called before ImmortalWrt compilation)
     └── gitcj.py + giturl.txt         # Batch clone third-party LuCI plugins
 ```
 

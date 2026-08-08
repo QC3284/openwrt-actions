@@ -3,7 +3,7 @@
 # Copyright (c) 2024-2026 QC3284. GPL-3.0-only.
 # https://github.com/QC3284/openwrt-actions
 
-set -o pipefail
+set -euo pipefail
 
 # 用途：编译前预下载所有依赖源码包 (make download)，并清理下载不完整的文件
 THREADS=$(nproc 2>/dev/null || echo 8)
