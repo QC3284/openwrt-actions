@@ -7,9 +7,7 @@ set -euo pipefail
 
 # 用途：feeds update 之前执行的 DIY 脚本 (在 Build-immortalwrt.yml 中调用)
 # 功能：克隆第三方软件包到源码树，供后续编译使用
-
-# 异常退出时自动清理临时目录
-trap 'rm -rf p-temp' EXIT
+# 注意: p-temp 临时目录由 diy2.sh 负责清理，此处不可清理
 
 git clone -b dev --single-branch --filter=blob:none https://github.com/vernesong/OpenClash p-temp/clash || { echo "错误: OpenClash 克隆失败"; exit 1; }
 # 文件管理插件 quickfile
