@@ -63,7 +63,7 @@
 3. **compile**（矩阵并行，每设备独立 job）：
    - 执行 DIY 脚本注入第三方插件（可由 `config/immortalwrt-diy-control.txt` 按设备控制），更新并安装 feeds
    - 打入 `files/etc/uci-defaults/99-custom.sh`（首次启动自动执行，见下文 uci-defaults）
-   - 先 `make -j$(nproc+1)` 编译，失败自动回退 `make -j1 V=s` 定位错误
+   - 先 `make -j$(nproc)` 编译，失败自动回退 `make -j1 V=s` 定位错误
    - **成功**：打包 bin 目录 (bin.7z)，生成 `sha256sums.txt` 和 `build-info.txt`（含源码分支/提交等溯源信息），上传 Artifact 并发布 Release
    - **失败**：提取关键错误生成 `error_report.md`（输出到 Step Summary），上传日志并创建草稿 Release
    - 支持 `concurrency` 控制：定时触发时自动取消未完成的旧执行，手动触发不受影响
@@ -94,10 +94,8 @@
     ├── immortalwrt-actions-diy2.sh   # feeds update 后：替换 OpenClash
     ├── immortalwrt-switch-branch.sh  # 按机型切换源码分支
     ├── immortalwrt-uci-defaults.sh    # uci-defaults: LAN IP, SSH 切换, mirrors.sh
-    ├── lede-github-actions-ip.sh     # LEDE: 修改默认管理 IP
     ├── lede-github-actions-rl.sh     # LEDE: 生成 Release 说明
     ├── x-wrt-actions-txt-001.sh      # X-Wrt: 生成 Release 说明
-    ├── x-wrt-git-001.sh              # 替换 coremark 包
     ├── x-wrt-make-001.sh             # 预下载依赖并清理残缺包 (ImmortalWrt 编译前调用)
     └── gitcj.py + giturl.txt         # 批量克隆第三方 luci 插件
 ```

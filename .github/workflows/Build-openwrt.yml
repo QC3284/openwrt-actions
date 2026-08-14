@@ -22,6 +22,11 @@ env:
 concurrency:
   group: ${{ github.workflow }}-${{ github.event_name }}
   cancel-in-progress: ${{ github.event_name == 'schedule' }}
+
+# GITHUB_TOKEN 最小权限: 创建 Release 需要 contents: write
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-24.04
@@ -40,7 +45,7 @@ jobs:
     - name: 创建工作目录 (Create Work Directory)
       run: |
         sudo mkdir -p /workdir
-        sudo chown $USER:$GROUPS /workdir
+        sudo chown "$(id -u):$(id -g)" /workdir
         echo "Work directory created at /workdir"
 
     - name: 释放磁盘空间 (Free Disk Space)
@@ -139,7 +144,6 @@ jobs:
           xmlto \
           xxd \
           zstd
-        pip install requests tqdm
         echo "Packages installed successfully"
 
     - name: 检查可用磁盘空间 (Check Available Disk Space After Package Installation)
@@ -151,7 +155,7 @@ jobs:
       working-directory: /workdir
       run: |
         echo "Cloning source code from: $(cat ${{ env.SOURCE_CODE_URL_FILE }})"
-        git clone $(cat ${{ env.SOURCE_CODE_URL_FILE }}) openwrt
+        git clone "$(cat "${{ env.SOURCE_CODE_URL_FILE }}")" openwrt
         echo "Source code cloned successfully"
 
     - name: 链接源码目录 (Link Source Code Directory)
@@ -302,7 +306,7 @@ jobs:
     - name: 生成发布标签 (Generate Release Tags)
       id: tag
       run: |
-        RELEASE_TAG=$(date +"%Y.%m.%d-%H%M")-openwrt
+        RELEASE_TAG=$(date +"%Y.%m.%d-%H%M")-openwrt-${{ github.run_id }}
         echo "release_tag=$RELEASE_TAG" >> $GITHUB_OUTPUT
         echo "Generated release tag: $RELEASE_TAG"
 
@@ -312,7 +316,7 @@ jobs:
         echo "Device: ${{ env.DEVICE_NAME }}" >> release.txt
         echo "Target: mediatek/filogic" >> release.txt
         echo "" >> release.txt
-        echo "Source: https://git.openwrt.org/openwrt/openwrt.git" >> release.txt
+        echo "Source: $(cat "${{ env.SOURCE_CODE_URL_FILE }}")" >> release.txt
 
     - name: 发布固件 (Release Firmware)
       uses: softprops/action-gh-release@v3

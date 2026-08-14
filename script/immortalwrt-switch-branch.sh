@@ -40,7 +40,8 @@ if [ -n "$EXPLICIT_BRANCH" ]; then
   echo "使用显式指定的分支: $BRANCH"
 elif [ -f "$BRANCH_FILE" ]; then
   BRANCH="$DEFAULT_BRANCH"
-  MATCH=$(grep -v '^[[:space:]]*#' "$BRANCH_FILE" | awk -v dev="$DEVICE" '$1 == dev {print $2; exit}')
+  # || true: 分支文件全为注释时 grep 退出码 1，set -euo pipefail 会终止脚本而非回退默认分支
+  MATCH=$(grep -v '^[[:space:]]*#' "$BRANCH_FILE" | awk -v dev="$DEVICE" '$1 == dev {print $2; exit}' || true)
   if [ -n "$MATCH" ]; then
     BRANCH="$MATCH"
     echo "设备 [$DEVICE] 在配置文件中，使用分支: $BRANCH"
@@ -57,12 +58,13 @@ cd "$REPO_DIR"
 # 从仓库 URL 提取源地址 (如 /workdir/openwrt 中的 origin remote)
 SOURCE_URL=$(git remote get-url origin 2>/dev/null || echo "")
 if [ -n "$SOURCE_URL" ]; then
-  REMOTE_SHA=$(git ls-remote "$SOURCE_URL" "refs/heads/$BRANCH" 2>/dev/null | awk '{print $1}')
+  # || true: ls-remote 网络失败时进入下方回退逻辑，而非被 set -euo pipefail 直接终止
+  REMOTE_SHA=$(git ls-remote "$SOURCE_URL" "refs/heads/$BRANCH" 2>/dev/null | awk '{print $1}' || true)
   if [ -z "$REMOTE_SHA" ]; then
     echo "错误: 远端分支 $BRANCH 不存在于 $SOURCE_URL"
     echo "回退到默认分支: $DEFAULT_BRANCH"
     BRANCH="$DEFAULT_BRANCH"
-    REMOTE_SHA=$(git ls-remote "$SOURCE_URL" "refs/heads/$BRANCH" 2>/dev/null | awk '{print $1}')
+    REMOTE_SHA=$(git ls-remote "$SOURCE_URL" "refs/heads/$BRANCH" 2>/dev/null | awk '{print $1}' || true)
     [ -z "$REMOTE_SHA" ] && { echo "严重错误: 默认分支 $BRANCH 也不存在"; exit 1; }
   fi
 fi

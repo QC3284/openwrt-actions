@@ -59,7 +59,8 @@ jobs:
       - name: 校验 Workflow YAML (Validate Workflows)
         run: |
           echo "=== 检查 Workflow YAML 语法 ==="
-          pip install pyyaml -q 2>/dev/null || true
+          # ubuntu-24.04 系统 Python 受 PEP 668 保护，需 --break-system-packages；其它镜像回退普通 pip
+          pip install --break-system-packages pyyaml -q 2>/dev/null || pip install pyyaml -q 2>/dev/null || true
           FAIL=0
           for f in .github/workflows/*.yml; do
             if python3 -c "import yaml; yaml.safe_load(open('$f'))" 2>&1; then
@@ -79,16 +80,24 @@ jobs:
         run: |
           echo "=== 检查配置完整性 ==="
           MISSING=0
-          for f in config/immortalwrt-url.txt config/immortalwrt-mt798x-enable-configs.txt config/immortalwrt-device-branch.txt config/immortalwrt-default-branch.txt config/immortalwrt-last-commit.txt config/immortalwrt-diy-control.txt; do
+          for f in config/immortalwrt-url.txt config/immortalwrt-mt798x-enable-configs.txt config/immortalwrt-default-branch.txt; do
             if [ -f "$f" ]; then
               echo "  ✅ $f"
             else
-              echo "  ❌ 缺少: $f"
+              echo "  ❌ 缺少必需文件: $f"
               MISSING=1
             fi
           done
+          for f in config/immortalwrt-device-branch.txt config/immortalwrt-last-commit.txt config/immortalwrt-diy-control.txt; do
+            if [ -f "$f" ]; then
+              echo "  ✅ $f"
+            else
+              echo "  ⚠️ 缺少可选文件 (编译时使用默认行为): $f"
+            fi
+          done
           if [ $MISSING -ne 0 ]; then
-            echo "::warning::部分配置文件缺失，编译工作流可能无法运行"
+            echo "::error::必需配置文件缺失，编译工作流无法运行"
+            exit 1
           fi
 
       - name: 校验配置文件内容格式 (Validate Config Content)

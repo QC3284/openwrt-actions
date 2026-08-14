@@ -27,9 +27,15 @@ env:
 concurrency:
   group: ${{ github.workflow }}-${{ github.event_name }}
   cancel-in-progress: ${{ github.event_name == 'schedule' }}
+
+# GITHUB_TOKEN 最小权限: 创建/清理 Release 与工作流运行需要 contents: write + actions: write
+permissions:
+  contents: write
+  actions: write
+
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
 
     steps:
     - name: 检出仓库 (Checkout Repository)
@@ -76,7 +82,6 @@ jobs:
         sudo -E apt install build-essential ecj fastjar file flex g++ gcc-multilib g++-multilib gawk gettext git git-core java-propose-classpath libelf-dev libncurses5-dev libncursesw5-dev libssl-dev swig python3 python3-pip python3-dev python3-setuptools python3-pyelftools subversion unzip wget zlib1g-dev curl wget rsync qemu-utils zip -y
         sudo -E apt-get install -y libfuse-dev neofetch 7zip
         sudo -E apt full-upgrade -y
-        pip install requests tqdm
         echo Done
         sleep 3
 
@@ -90,7 +95,7 @@ jobs:
         git pull
         git fetch origin
         git fetch origin --tags
-        git checkout $(cat  $GITHUB_WORKSPACE/config/x-wrt-config-tag.txt)
+        git checkout "$(cat "$GITHUB_WORKSPACE/config/x-wrt-config-tag.txt")"
          
         
     - name: 拉取插件 (Pull Plugins)
@@ -128,7 +133,7 @@ jobs:
       run: |
          sudo neofetch
          cd openwrt
-         cp  $GITHUB_WORKSPACE/config/x-wrt-actions-$(cat  $GITHUB_WORKSPACE/config/x-wrt-config-tag.txt).config .config
+         cp "$GITHUB_WORKSPACE/config/x-wrt-actions-$(cat "$GITHUB_WORKSPACE/config/x-wrt-config-tag.txt").config" .config
          bash  $GITHUB_WORKSPACE/script/x-wrt-make-001.sh
     
     - name: 压缩已准备好的编译目录 (Compress Prepared Build Directory)
@@ -143,7 +148,7 @@ jobs:
          mv "x-wrt-compilation-directory-$(cat  $GITHUB_WORKSPACE/config/x-wrt-config-tag.txt).7z" openwrt/
          cd openwrt
          sudo neofetch
-         make -version
+         make --version
          gcc --version | head -n1
          sleep 10
          echo "开始编译"
@@ -155,9 +160,9 @@ jobs:
          [ -s DEVICE_NAME ] && echo "DEVICE_NAME=_$(cat DEVICE_NAME)" >> $GITHUB_ENV
          echo "FILE_DATE=_$(date +"%Y%m%d%H%M-X-wrt")" >> $GITHUB_ENV
          echo "压缩bin目录...... (Compressing bin directories ......)"
-         wget https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/pb-boot-cr660x-back/pb-boot.ecc
-         wget https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/pb-boot-cr660x-back/pb-boot.img
-         wget https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/pb-boot-cr660x-back/pb-boot.sha256
+         for f in pb-boot.ecc pb-boot.img pb-boot.sha256; do
+           wget "https://raw.githubusercontent.com/QC3284/openwrt-actions-config/main/pb-boot-cr660x-back/$f" || { echo "::error::pb-boot 下载失败: $f"; exit 1; }
+         done
          7zz a -mx=9 -mmt=8 "pb-boot.7z" "pb-boot.ecc" "pb-boot.img" "pb-boot.sha256"
          7zz a -mx=9 -mmt=8 bin.7z bin
          mv "pb-boot.7z" bin/targets/ramips/mt7621/
@@ -196,7 +201,7 @@ jobs:
     - name: 生成发布标签 (Generate Release Tag)
       id: tag
       run: |
-        echo "release_tag=$(date +"%Y.%m.%d-%H%M")-X-wrt" >> $GITHUB_OUTPUT
+        echo "release_tag=$(date +"%Y.%m.%d-%H%M")-X-wrt-${{ github.run_id }}" >> $GITHUB_OUTPUT
         touch release.txt
         bash script/x-wrt-actions-txt-001.sh
         echo "status=success" >> $GITHUB_OUTPUT

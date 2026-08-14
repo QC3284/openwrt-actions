@@ -64,7 +64,7 @@ Select `Build-immortalwrt-single.yml` → Run workflow in the Actions tab:
    - Pulls source code and switches branch via `script/immortalwrt-switch-branch.sh` using `config/immortalwrt-device-branch.txt` (falls back to `config/immortalwrt-default-branch.txt`, defaulting to `25.12`)
    - Runs DIY scripts to inject third-party packages (controlled per device by `config/immortalwrt-diy-control.txt`), updates and installs feeds
    - Copies `files/etc/uci-defaults/99-custom.sh` for first-boot auto-configuration (see uci-defaults below)
-   - Compiles with `make -j$(nproc+1)`, falling back to `make -j1 V=s` on failure for detailed diagnostics
+   - Compiles with `make -j$(nproc)`, falling back to `make -j1 V=s` on failure for detailed diagnostics
    - **Success**: Packages bin directory (bin.7z), generates `sha256sums.txt` and `build-info.txt` (with source branch/commit traceability), uploads Artifact and creates Release
    - **Failure**: Extracts key errors into `error_report.md` (visible in Step Summary), uploads logs and creates a draft Release
    - Concurrency control: automatically cancels stale in-progress runs on schedule, manual triggers unaffected
@@ -95,10 +95,8 @@ Select `Build-immortalwrt-single.yml` → Run workflow in the Actions tab:
     ├── immortalwrt-actions-diy2.sh   # Post-feeds-update: replace OpenClash
     ├── immortalwrt-switch-branch.sh  # Switch source branch per device
     ├── immortalwrt-uci-defaults.sh   # uci-defaults: LAN IP, SSH migration, mirrors.sh
-    ├── lede-github-actions-ip.sh     # LEDE: modify default LAN IP
     ├── lede-github-actions-rl.sh     # LEDE: generate release notes
     ├── x-wrt-actions-txt-001.sh      # X-Wrt: generate release notes
-    ├── x-wrt-git-001.sh              # Replace coremark package
     ├── x-wrt-make-001.sh             # Pre-download dependencies, clean incomplete files (called before ImmortalWrt compilation)
     └── gitcj.py + giturl.txt         # Batch clone third-party LuCI plugins
 ```

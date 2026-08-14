@@ -27,9 +27,15 @@ env:
 concurrency:
   group: ${{ github.workflow }}-${{ github.event_name }}
   cancel-in-progress: ${{ github.event_name == 'schedule' }}
+
+# GITHUB_TOKEN 最小权限: 创建/清理 Release 与工作流运行需要 contents: write + actions: write
+permissions:
+  contents: write
+  actions: write
+
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
 
     steps:
     - name: 检出仓库 (Checkout Repository)
@@ -85,7 +91,7 @@ jobs:
         sed -i '2i src-git small https://github.com/kenzok8/small' feeds.conf.default
         ./scripts/feeds update -a
         rm -rf feeds/luci/applications/luci-app-mosdns
-        rm -rf feeds/packages/net/{alist,adguardhome,mosdns,xray*,v2ray*,v2ray*,sing*,smartdns}
+        rm -rf feeds/packages/net/{alist,adguardhome,mosdns,xray*,v2ray*,sing*,smartdns}
         rm -rf feeds/packages/utils/v2dat
         rm -rf feeds/packages/lang/golang
         git clone https://github.com/kenzok8/golang feeds/packages/lang/golang
@@ -157,7 +163,7 @@ jobs:
     - name: 生成发布标签 (Generate Release Tag)
       id: tag
       run: |
-        echo "release_tag=$(date +"%Y.%m.%d-%H%M-LEDE")" >> $GITHUB_OUTPUT
+        echo "release_tag=$(date +"%Y.%m.%d-%H%M-LEDE")-${{ github.run_id }}" >> $GITHUB_OUTPUT
         touch release.txt
         bash $GITHUB_WORKSPACE/script/lede-github-actions-rl.sh
         echo "status=success" >> $GITHUB_OUTPUT

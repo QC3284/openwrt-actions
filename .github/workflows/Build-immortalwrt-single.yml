@@ -156,7 +156,6 @@ jobs:
             libmpfr-dev libncurses-dev libpython3-dev libreadline-dev libtool libyaml-dev libz-dev lld llvm \
             lrzsz mkisofs msmtp nano ninja-build p7zip patch pkgconf python3-ply python3-docutils re2c \
             scons squashfs-tools texinfo uglifyjs upx-ucl vim xmlto xxd zstd
-          pip install requests tqdm
 
       - name: 拉取源码 (Pull Source Code)
         working-directory: /workdir
@@ -456,10 +455,10 @@ jobs:
           ### 📦 Attached Files
           - **`*sysupgrade.bin` / `*factory.img`** — Firmware images
           - **`*preloader.bin` / `*bl31-uboot.fip`** — Bootloader files (if applicable)
-          - **`bin.7z`** — Full build directory archive
+          - **`bin.*.7z`** — Full build directory archive
           - **`sha256sums.txt`** — SHA256 checksums for all firmware files
           - **`build-info.txt`** — Build traceability (branch, commit, timestamp)
-          - **`make.log`** — Compilation log
+          - **`make.*.log`** — Compilation log
 
           ---
           > [${{ github.workflow }} #${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
