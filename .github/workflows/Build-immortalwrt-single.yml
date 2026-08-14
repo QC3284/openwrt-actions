@@ -278,7 +278,7 @@ jobs:
 
       # ---------- 编译失败处理 ----------
       - name: 生成错误报告 (Generate Error Report)
-        if: steps.compile.outputs.compile_completed == 'false'
+        if: steps.compile.outputs.compile_completed != 'true'
         working-directory: ${{ env.OPENWRT_DIR }}
         run: |
           {
@@ -297,7 +297,7 @@ jobs:
           cat error_report.md >> $GITHUB_STEP_SUMMARY
 
       - name: 上传失败日志 (Upload Failure Log)
-        if: steps.compile.outputs.compile_completed == 'false'
+        if: steps.compile.outputs.compile_completed != 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: failed-build-log-${{ inputs.device }}-${{ github.run_id }}
@@ -307,7 +307,7 @@ jobs:
           retention-days: 7
 
       - name: 生成失败 Release 信息 (Generate Failure Release Info)
-        if: steps.compile.outputs.compile_completed == 'false'
+        if: steps.compile.outputs.compile_completed != 'true'
         id: failed_release
         run: |
           BUILD_DATETIME=$(date +"%Y%m%d%H%M")
@@ -333,7 +333,7 @@ jobs:
           } >> release_failed.txt
 
       - name: 发布失败 Release (Create Failure Release)
-        if: steps.compile.outputs.compile_completed == 'false'
+        if: steps.compile.outputs.compile_completed != 'true'
         uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -346,6 +346,13 @@ jobs:
             ${{ env.OPENWRT_DIR }}/error_report.md
           draft: true
           prerelease: true
+
+      # 编译失败必须让 job 以失败结束，否则 Actions UI 会显示绿色误导
+      - name: 标记编译失败 (Mark Build Failed)
+        if: steps.compile.outputs.compile_completed != 'true'
+        run: |
+          echo "::error::设备编译失败，诊断已生成 (失败 Release 草稿 + 日志 Artifact)"
+          exit 1
 
       # ---------- 编译成功处理 ----------
       - name: 压缩并整理固件 (Compress and Organize Firmware)
@@ -403,7 +410,11 @@ jobs:
             base="${f%.*}"
             ext="${f##*.}"
             newname="${base}${TS_SUFFIX}.${ext}"
-            mv "$f" "$newname" 2>/dev/null && echo "  重命名: $f -> $newname"
+            if mv "$f" "$newname" 2>/dev/null; then
+              echo "  重命名: $f -> $newname"
+            else
+              echo "  ⚠️ 重命名失败: $f (保留原名)"
+            fi
           done
           echo ""
 
