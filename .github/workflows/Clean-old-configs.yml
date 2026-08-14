@@ -13,6 +13,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event_name }}
   cancel-in-progress: ${{ github.event_name == 'schedule' }}
 
+# GITHUB_TOKEN 最小权限: 归档旧配置需要推送提交 (contents: write)
+permissions:
+  contents: write
+
 jobs:
   clean:
     runs-on: ubuntu-24.04

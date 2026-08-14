@@ -11,8 +11,7 @@
 name: 编译X-wrt (Compile X-wrt)
 
 on:
-  schedule:
-    - cron: 0 3 * * 3,6
+  # 已停更: 定时构建已移除，如需构建请手动触发 (workflow_dispatch)
   repository_dispatch:
   workflow_dispatch:
     inputs:
@@ -101,9 +100,10 @@ jobs:
         cp  $GITHUB_WORKSPACE/script/gitcj.py .
         cp  $GITHUB_WORKSPACE/script/giturl.txt .
         python3 gitcj.py
-        mv accesscontrol-plus/luci-app-accesscontrol-plus ./
+        # 修复: git clone 生成的目录名为仓库名 luci-app-accesscontrol-plus
+        mv luci-app-accesscontrol-plus/luci-app-accesscontrol-plus ./
         sleep 2
-        sudo rm -rf accesscontrol-plus
+        sudo rm -rf luci-app-accesscontrol-plus
         sleep 3
       
     - name: 下载横幅 (Download Banner)

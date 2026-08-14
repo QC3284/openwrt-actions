@@ -15,6 +15,10 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# 校验工作流只需要读取仓库内容
+permissions:
+  contents: read
+
 jobs:
   validate:
     runs-on: ubuntu-24.04
@@ -182,7 +186,8 @@ jobs:
           echo "全部通过"
 
       - name: ShellCheck (静态分析 Shell 脚本)
-        uses: ludeeus/action-shellcheck@master
+        # 固定到 commit SHA: 上游 2024-06 后未再更新，@master 为浮动引用
+        uses: ludeeus/action-shellcheck@00b27aa7cb85167568cb48a3838b75f4265f2bca
         with:
           scandir: './script'
           severity: warning

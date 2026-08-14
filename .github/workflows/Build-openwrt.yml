@@ -9,8 +9,7 @@
 name: 编译 OpenWrt (Compile OpenWrt)
 
 on:
-  schedule:
-    - cron: 0 3 * * 3,6
+  # 已停更: 定时构建已移除，如需构建请手动触发 (workflow_dispatch)
   repository_dispatch:
   workflow_dispatch:
 
@@ -149,7 +148,6 @@ jobs:
         df -h
 
     - name: 拉取源码 (Pull Source Code)
-      if: steps.cache-openwrt.outputs.cache-hit != 'true'
       working-directory: /workdir
       run: |
         echo "Cloning source code from: $(cat ${{ env.SOURCE_CODE_URL_FILE }})"

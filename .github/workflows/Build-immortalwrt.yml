@@ -27,6 +27,10 @@ env:
   LOG_TRUNCATE_LINES: 100000
   LOG_KEEP_LINES: 3000
 
+# GITHUB_TOKEN 最小权限: 推送跟踪提交、创建/清理 Release 需要 contents: write
+permissions:
+  contents: write
+
 jobs:
   prepare:
     runs-on: ubuntu-24.04
@@ -64,7 +68,7 @@ jobs:
             local dev=$1
             local branch=$DEFAULT_BRANCH
             if [ -f "$BRANCH_FILE" ]; then
-              local match=$(grep -v '^[[:space:]]*#' "$BRANCH_FILE" | awk -v d="$dev" '$1 == d {print $2; exit}')
+              local match=$(grep -v '^[[:space:]]*#' "$BRANCH_FILE" | awk -v d="$dev" '$1 == d {print $2; exit}' || true)
               [ -n "$match" ] && branch="$match"
             fi
             echo "$branch"
@@ -90,7 +94,8 @@ jobs:
           echo ""
           echo "=== 获取远端提交 ==="
           for branch in "${!UNIQUE_BRANCHES[@]}"; do
-            commit=$(git ls-remote "$SOURCE_URL" "refs/heads/$branch" 2>/dev/null | awk '{print $1}')
+            # || true: ls-remote 网络失败时避免默认 shell (-e -o pipefail) 直接终止步骤
+            commit=$(git ls-remote "$SOURCE_URL" "refs/heads/$branch" 2>/dev/null | awk '{print $1}' || true)
             if [ -z "$commit" ]; then
               echo "::warning::无法获取分支 $branch 的提交 ID"
               commit="unknown"
@@ -105,7 +110,7 @@ jobs:
 
           # 对比存储的上次提交 (仅在 schedule 触发时跳过未变更的构建)
           ALL_MATCH=true
-          STORED=$(load_stored)
+          STORED=$(load_stored || true)
           for dev in "${ENABLED_DEVICES[@]}"; do
             stored_sha=$(echo "$STORED" | awk -F= -v b="${DEV_BRANCH[$dev]}" '$1 == b {print $2}')
             current_sha="${DEV_COMMIT[$dev]}"
@@ -126,7 +131,11 @@ jobs:
                 break
               fi
             done
-            [ -z "$commit" ] && continue
+            # 获取失败时的占位值 "unknown" 不能写入跟踪文件 (会污染记录并触发 Validate 格式校验失败)
+            if [ -z "$commit" ] || [ "$commit" = "unknown" ]; then
+              echo "跳过跟踪文件更新: 分支 $branch 未获取到有效提交"
+              continue
+            fi
             if [ ! -f "$TRACK_FILE" ]; then
               echo "${branch}=${commit}" >> "$TRACK_FILE"
             elif awk -F= -v b="$branch" '$1 == b {exit 1}' "$TRACK_FILE" 2>/dev/null; then
@@ -448,7 +457,9 @@ jobs:
         working-directory: ${{ env.OPENWRT_DIR }}
         run: |
           # 动态探测输出目录 (bin/targets/<target>/<subtarget>)，兼容不同芯片/平台
-          TARGET_PATH=$(find bin/targets -mindepth 2 -maxdepth 2 -type d | head -n 1)
+          # || true: bin/targets 不存在时 find 返回非零，默认 shell (-e -o pipefail) 会终止步骤，
+          # 使下方的空目录检查成为死代码
+          TARGET_PATH=$(find bin/targets -mindepth 2 -maxdepth 2 -type d 2>/dev/null | head -n 1 || true)
           if [ -z "$TARGET_PATH" ]; then
             echo "::warning::未找到编译输出目录，跳过固件打包"
             exit 0
@@ -508,7 +519,7 @@ jobs:
           echo "TARGET_NAME=$TARGET_NAME" >> $GITHUB_ENV
 
           # 生成 SHA256 校验文件 (失败自动重试一次，仍失败则致命)
-          FIRMWARE_FILES=$(ls $FW_GLOB 2>/dev/null)
+          FIRMWARE_FILES=$(ls $FW_GLOB 2>/dev/null || true)
           if [ -n "$FIRMWARE_FILES" ]; then
             if sha256sum $FIRMWARE_FILES > sha256sums.txt 2>/dev/null; then
               echo "SHA256 校验文件已生成"
@@ -607,7 +618,7 @@ jobs:
 
   summarize:
     needs: [prepare, compile]
-    if: always() && needs.prepare.outputs.skip != 'true'
+    if: always() && needs.prepare.result == 'success' && needs.prepare.outputs.skip != 'true'
     runs-on: ubuntu-24.04
     steps:
       - name: 输出编译摘要 (Build Summary)

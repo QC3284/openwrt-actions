@@ -43,6 +43,10 @@ env:
   LOG_TRUNCATE_LINES: 100000
   LOG_KEEP_LINES: 3000
 
+# GITHUB_TOKEN 最小权限: 创建 Release 需要 contents: write
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-24.04
@@ -108,7 +112,8 @@ jobs:
           else
             BRANCH="$DEFAULT_BRANCH"
             if [ -f "$BRANCH_FILE" ]; then
-              MATCH=$(grep -v '^[[:space:]]*\(#.*\|$\)' "$BRANCH_FILE" | awk -v d="$DEVICE" '$1 == d {print $2; exit}')
+              # || true: 分支表全为注释时 grep 退出码 1，默认 shell (-e -o pipefail) 会终止步骤
+              MATCH=$(grep -v '^[[:space:]]*\(#.*\|$\)' "$BRANCH_FILE" | awk -v d="$DEVICE" '$1 == d {print $2; exit}' || true)
               [ -n "$MATCH" ] && BRANCH="$MATCH"
             fi
             echo "分支 (配置): $BRANCH"
@@ -327,7 +332,9 @@ jobs:
         if: steps.compile.outputs.compile_completed == 'true'
         working-directory: ${{ env.OPENWRT_DIR }}
         run: |
-          TARGET_PATH=$(find bin/targets -mindepth 2 -maxdepth 2 -type d | head -n 1)
+          # || true: bin/targets 不存在时 find 返回非零，默认 shell (-e -o pipefail) 会终止步骤，
+          # 使下方的空目录检查成为死代码
+          TARGET_PATH=$(find bin/targets -mindepth 2 -maxdepth 2 -type d 2>/dev/null | head -n 1 || true)
           if [ -z "$TARGET_PATH" ]; then
             echo "::warning::未找到编译输出目录，跳过固件打包"
             exit 0
@@ -383,7 +390,7 @@ jobs:
           echo "TARGET_DIR=${{ env.OPENWRT_DIR }}/$TARGET_PATH" >> $GITHUB_ENV
           echo "TARGET_NAME=$TARGET_NAME" >> $GITHUB_ENV
 
-          FIRMWARE_FILES=$(ls $FW_GLOB 2>/dev/null)
+          FIRMWARE_FILES=$(ls $FW_GLOB 2>/dev/null || true)
           if [ -n "$FIRMWARE_FILES" ]; then
             if sha256sum $FIRMWARE_FILES > sha256sums.txt 2>/dev/null; then
               echo "SHA256 校验文件已生成"
