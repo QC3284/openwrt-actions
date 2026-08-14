@@ -39,7 +39,7 @@ jobs:
 
     steps:
     - name: 检出仓库 (Checkout Repository)
-      uses: actions/checkout@a3d3c42e5aac5ba805825da76410c181273ba90b1
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
     - name: 初始化环境 (Initialize Environment)
       env:
@@ -137,7 +137,7 @@ jobs:
       run: df -hT
 
     - name: 上传 bin 目录 (Upload bin Directory)
-      uses: actions/upload-artifact@a043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
       with:
         name: OpenWrt_bin${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
         path: openwrt/bin
@@ -151,7 +151,7 @@ jobs:
         echo "status=success" >> $GITHUB_OUTPUT
 
     - name: 上传固件目录 (Upload Firmware Directory)
-      uses: actions/upload-artifact@a043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
       with:
         name: OpenWrt_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
         path: ${{ env.FIRMWARE }}
@@ -165,7 +165,7 @@ jobs:
         echo "status=success" >> $GITHUB_OUTPUT
 
     - name: 上传固件以发布 (Upload Firmware for Release)
-      uses: softprops/action-gh-release@a3d0d9888cb7fd7b750713d6e236d1fcb99157228
+      uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228
       if: steps.tag.outputs.status == 'success' && !cancelled()
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -175,7 +175,7 @@ jobs:
         files: ${{ env.FIRMWARE }}/*
      
     - name: 删除旧 Release 与工作流运行记录 (Delete Old Releases and Workflow Runs)
-      uses: ophub/delete-releases-workflows@a185ead47518014ad09d25f358e70353483bdb22f
+      uses: ophub/delete-releases-workflows@185ead47518014ad09d25f358e70353483bdb22f
       with:
         delete_releases: true
         releases_keep_latest: 25
