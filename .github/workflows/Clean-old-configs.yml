@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: 检出仓库 (Checkout Repository)
-        uses: actions/checkout@v7.0.1
+        uses: actions/checkout@a3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 1
 
@@ -73,6 +73,21 @@ jobs:
               fi
             fi
           done < <(find "$CONFIG_DIR" -maxdepth 1 -type f -name "immortalwrt-actions-*.config" -print0)
+
+          # 裁剪归档: 删除文件名时间戳超过 90 天的旧配置，控制仓库体积
+          CUTOFF=$(date -d '90 days ago' +%Y%m%d%H%M%S)
+          PRUNED=0
+          while IFS= read -r -d '' file; do
+            filename=$(basename "$file")
+            if [[ "$filename" =~ ^immortalwrt-actions-([a-z0-9]+)-(.+)-([0-9]{14})\.config$ ]]; then
+              if [[ "${BASH_REMATCH[3]}" < "$CUTOFF" ]]; then
+                rm -f "$file"
+                PRUNED=$((PRUNED + 1))
+                echo "裁剪过期归档: $filename"
+              fi
+            fi
+          done < <(find "$ARCHIVE_DIR" -maxdepth 1 -type f -name "immortalwrt-actions-*.config" -print0 2>/dev/null)
+          echo "共裁剪 $PRUNED 个过期归档 (90 天前)"
 
           echo ""
           echo "========== 清理完成 =========="

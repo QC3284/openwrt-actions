@@ -39,10 +39,10 @@ jobs:
 
     steps:
     - name: 检出仓库 (Checkout Repository)
-      uses: actions/checkout@v7.0.1
+      uses: actions/checkout@a3d3c42e5aac5ba805825da76410c181273ba90b1
 
     - name: 释放磁盘空间 (Free Disk Space)
-      uses: jlumbroso/free-disk-space@v1.3.1
+      uses: jlumbroso/free-disk-space@a54081f138730dfa15788a46383842cd2f914a1be
       with:
         # this might remove tools that are actually needed,
         # if set to "true" but frees about 6 GB
@@ -62,28 +62,22 @@ jobs:
         DEBIAN_FRONTEND: noninteractive
       run: |
         echo Start
-        sleep 3
         sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc
-        sudo rm -rf /usr/share/dotnet
         sudo rm -rf /etc/mysql
         sudo rm -rf /etc/php
         sudo timedatectl set-timezone "$TZ"
         sudo mkdir -p /workdir
-        sudo chown $USER:$GROUPS /workdir
+        sudo chown "$(id -u):$(id -g)" /workdir
         echo Done
         
     - name: 安装必要软件包 (Install Necessary Packages)
       run: |
         echo Start
         echo $(uname -a) 
-        sleep 5
         sudo -E apt update
-        sudo -E apt upgrade -y
         sudo -E apt install build-essential ecj fastjar file flex g++ gcc-multilib g++-multilib gawk gettext git git-core java-propose-classpath libelf-dev libncurses5-dev libncursesw5-dev libssl-dev swig python3 python3-pip python3-dev python3-setuptools python3-pyelftools subversion unzip wget zlib1g-dev curl wget rsync qemu-utils zip -y
         sudo -E apt-get install -y libfuse-dev neofetch 7zip
-        sudo -E apt full-upgrade -y
         echo Done
-        sleep 3
 
     - name: 拉取源码 (Pull Source Code)
       working-directory: /workdir
@@ -107,9 +101,7 @@ jobs:
         python3 gitcj.py
         # 修复: git clone 生成的目录名为仓库名 luci-app-accesscontrol-plus
         mv luci-app-accesscontrol-plus/luci-app-accesscontrol-plus ./
-        sleep 2
         sudo rm -rf luci-app-accesscontrol-plus
-        sleep 3
       
     - name: 下载横幅 (Download Banner)
       run: |
@@ -140,7 +132,6 @@ jobs:
       run: |
           echo "Start"
           7zz a -mx=9 -mmt=8 "x-wrt-compilation-directory-$(cat  $GITHUB_WORKSPACE/config/x-wrt-config-tag.txt).7z" openwrt
-          sleep 2
           echo "All Done"
 
     - name: 编译固件 (Compile Firmware)
@@ -150,7 +141,6 @@ jobs:
          sudo neofetch
          make --version
          gcc --version | head -n1
-         sleep 10
          echo "开始编译"
          echo -e "$(nproc) thread compile"
          echo "编译已开始，日志文件 make.log"
@@ -177,7 +167,7 @@ jobs:
       run: df -hT
 
     - name: 上传 bin 目录 (Upload bin Directory)
-      uses: actions/upload-artifact@v7.0.1
+      uses: actions/upload-artifact@a043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
       with:
         name: OpenWrt_bin${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
         path: openwrt/bin
@@ -192,7 +182,7 @@ jobs:
         echo "status=success" >> $GITHUB_OUTPUT
 
     - name: 上传固件目录 (Upload Firmware Directory)
-      uses: actions/upload-artifact@v7.0.1
+      uses: actions/upload-artifact@a043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
       with:
         name: OpenWrt_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
         path: ${{ env.FIRMWARE }}
@@ -207,7 +197,7 @@ jobs:
         echo "status=success" >> $GITHUB_OUTPUT
 
     - name: 上传固件以发布 (Upload Firmware for Release)
-      uses: softprops/action-gh-release@v3
+      uses: softprops/action-gh-release@a3d0d9888cb7fd7b750713d6e236d1fcb99157228
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
@@ -216,10 +206,11 @@ jobs:
         files: ${{ env.FIRMWARE }}/*
 
     - name: 删除旧 Release 与工作流运行记录 (Delete Old Releases and Workflow Runs)
-      uses: ophub/delete-releases-workflows@v0.1.0
+      uses: ophub/delete-releases-workflows@a185ead47518014ad09d25f358e70353483bdb22f
       with:
         delete_releases: true
         releases_keep_latest: 25
+        delete_tags: true
         delete_workflows: true
         workflows_keep_day: 30
         gh_token: ${{ secrets.GITHUB_TOKEN }}

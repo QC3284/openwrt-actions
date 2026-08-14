@@ -1,6 +1,7 @@
 # openwrt-actions
 
 [![Build ImmortalWrt](https://github.com/QC3284/openwrt-actions/actions/workflows/Build-immortalwrt.yml/badge.svg)](https://github.com/QC3284/openwrt-actions/actions/workflows/Build-immortalwrt.yml)
+[![Build ImmortalWrt Single](https://github.com/QC3284/openwrt-actions/actions/workflows/Build-immortalwrt-single.yml/badge.svg)](https://github.com/QC3284/openwrt-actions/actions/workflows/Build-immortalwrt-single.yml)
 [![Validate](https://github.com/QC3284/openwrt-actions/actions/workflows/Validate.yml/badge.svg)](https://github.com/QC3284/openwrt-actions/actions/workflows/Validate.yml)
 
 > [English](README_EN.md)
@@ -148,19 +149,20 @@ glinet_gl-mt3600be false
 编译时自动打入 `files/etc/uci-defaults/99-custom.sh`，设备首次启动后自动执行：
 
 1. **LAN IP**：设置为 `192.168.5.1/24`（CIDR 格式，适配 OpenWrt 21.02+）
-2. **SSH 切换**：
+2. **默认密码**：root 密码设为 `password`（避免 sshd 空密码拒登；首次登录后请尽快修改）
+3. **SSH 切换**：
    - 检测 openssh-server 已安装后，通过 init.d 禁用 dropbear 并使用 `uci set enabled='0'` 确保 LuCI 状态同步
    - 启用 sshd，直接修改 `/etc/ssh/sshd_config` 允许 root 密码登录 (`PermitRootLogin yes`) 并重启 sshd 使配置生效
    - 迁移 `/etc/dropbear/` 下的密钥和 authorized_keys 至 `/root/.ssh/`
-3. **生成 mirrors.sh**：在 `/root/mirrors.sh` 生成交互式换源脚本
+4. **生成 mirrors.sh**：在 `/root/mirrors.sh` 生成交互式换源脚本
    - 支持 7 个镜像源：官方 / 自定义 / USTC / TUNA / 阿里云 / 腾讯云 / vsean
    - 支持命令行参数直接指定（如 `mirrors.sh 3`），无输入则默认自定义镜像
    - 兼容 opkg（24.10 及以前）和 apk（25.12 及以后）
    - 自动去除镜像路径前缀（`/openwrt`、`/immortalwrt`、`/lede`），替换前自动备份
    - 仅依赖 busybox ash + sed，无额外依赖
-4. **luci-app-quickfile 检测**：如已安装，自动配置 nginx UCI 并重启 nginx，未安装则静默跳过
-5. **wget HSTS 初始化**：检查 `/root/.wget-hsts`，不存在则自动创建，避免 wget https 下载异常
-6. **luci-app-online-upgrade 检测**：如已安装，自动启用在线升级功能
+5. **luci-app-quickfile 检测**：如已安装，自动配置 nginx UCI 并重启 nginx，未安装则静默跳过
+6. **wget HSTS 初始化**：检查 `/root/.wget-hsts`，不存在则自动创建，避免 wget https 下载异常
+7. **luci-app-online-upgrade 检测**：如已安装，自动启用在线升级功能
    - 通过 `online-upgrade.sh check` 检测 GitHub Releases 中是否有设备对应的新固件
    - 根据 IP 自动判断国内/海外网络（国内强制启用下载代理 `ghfast.top`）
    - 升级前自动备份配置，通过 `sysupgrade -f` 恢复
@@ -171,8 +173,8 @@ glinet_gl-mt3600be false
 以下信息由 `uci-defaults` 脚本在首次启动时自动配置：
 
 - 管理地址：`192.168.5.1/24`
-- 账号/密码：`root` / 无密码（首次登录后请设置密码）
-- SSH：若编译时选中 `openssh-server`，则自动启用 sshd 并禁用 dropbear、允许 root 密码登录；否则保持 dropbear 不变
+- 账号/密码：`root` / `password`（默认密码，首次登录后请尽快修改）
+- SSH：若编译时选中 `openssh-server`，则自动启用 sshd、允许 root 密码登录，并在默认密码设置成功后禁用 dropbear；否则保持 dropbear 不变
 - LuCI：若编译时选中 `luci` 包则默认启用，通过 `http://192.168.5.1` 访问
 
 ## 许可证

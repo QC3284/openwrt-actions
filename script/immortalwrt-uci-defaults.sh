@@ -15,9 +15,18 @@ LAN_IP="192.168.5.1/24"
 uci set network.lan.ipaddr="${LAN_IP}"
 uci commit network
 
-# 2. SSH: 将 dropbear 替换为 openssh-server (确认 sshd 已安装后才禁用 dropbear)
+# 2. 设置默认 root 密码 (避免 sshd 空密码拒登导致无法 SSH；首次登录后请尽快修改)
+PASSWORD_SET=0
+if printf 'password\npassword\n' | passwd root >/dev/null 2>&1; then
+  PASSWORD_SET=1
+  echo "默认密码已设置 (root/password)，请登录后尽快修改"
+else
+  echo "警告: 默认密码设置失败，将保留 dropbear 登录以避免锁定"
+fi
+
+# 3. SSH: 将 dropbear 替换为 openssh-server (确认 sshd 已安装且密码设置成功后才禁用 dropbear)
 if [ -x /etc/init.d/sshd ]; then
-  if [ -x /etc/init.d/dropbear ]; then
+  if [ "$PASSWORD_SET" -eq 1 ] && [ -x /etc/init.d/dropbear ]; then
     /etc/init.d/dropbear disable 2>/dev/null
     /etc/init.d/dropbear stop 2>/dev/null
     # 通过 uci 标记禁用 (确保 LuCI 同步状态)
@@ -42,7 +51,7 @@ if [ -x /etc/init.d/sshd ]; then
   fi
 fi
 
-# 3. 生成 mirrors.sh: 用户手动选择镜像源后替换
+# 4. 生成 mirrors.sh: 用户手动选择镜像源后替换
 #    使用占位符技巧避免 sed 重复替换，同时兼容 busybox sed (含/不含 -r)
 cat << 'SCRIPT_EOF' > /root/mirrors.sh
 #!/bin/sh
@@ -130,14 +139,14 @@ SCRIPT_EOF
 
 chmod +x /root/mirrors.sh
 
-# 4. luci-app-quickfile 检测：如已安装，配置 nginx 以启用文件管理功能
+# 5. luci-app-quickfile 检测：如已安装，配置 nginx 以启用文件管理功能
 if [ -f /usr/lib/lua/luci/controller/quickfile.lua ]; then
   if uci -q get nginx.global >/dev/null 2>&1; then
     uci set nginx.global.uci_enable='true'
     uci del nginx._lan 2>/dev/null
     uci del nginx._redirect2ssl 2>/dev/null
-    uci add nginx server 2>/dev/null
-    uci rename nginx.@server[0]='_lan' 2>/dev/null
+    # 直接创建命名 section，避免 rename @server[0] 误伤已有 server 配置
+    uci set nginx._lan=server
     uci set nginx._lan.server_name='_lan'
     uci add_list nginx._lan.listen='80 default_server'
     uci add_list nginx._lan.listen='[::]:80 default_server'
@@ -148,10 +157,10 @@ if [ -f /usr/lib/lua/luci/controller/quickfile.lua ]; then
   fi
 fi
 
-# 5. 初始化 wget HSTS 文件 (部分固件 wget 不会自动创建，导致 https 下载异常)
+# 6. 初始化 wget HSTS 文件 (部分固件 wget 不会自动创建，导致 https 下载异常)
 [ ! -f /root/.wget-hsts ] && touch /root/.wget-hsts
 
-# 6. luci-app-online-upgrade 检测：如已安装，自动启用在线升级
+# 7. luci-app-online-upgrade 检测：如已安装，自动启用在线升级
 if [ -f /usr/bin/online-upgrade.sh ]; then
   uci -q set online-upgrade.settings.enabled='1' 2>/dev/null
   uci -q commit online-upgrade 2>/dev/null

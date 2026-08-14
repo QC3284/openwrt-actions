@@ -53,7 +53,7 @@ jobs:
     timeout-minutes: 360
     steps:
       - name: 检出仓库 (Checkout Repository)
-        uses: actions/checkout@v7.0.1
+        uses: actions/checkout@a3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 1
 
@@ -134,7 +134,7 @@ jobs:
           sudo chown "$(id -u):$(id -g)" /workdir
 
       - name: 释放磁盘空间 (Free Disk Space)
-        uses: jlumbroso/free-disk-space@v1.3.1
+        uses: jlumbroso/free-disk-space@a54081f138730dfa15788a46383842cd2f914a1be
         with:
           tool-cache: false
           android: true
@@ -162,11 +162,21 @@ jobs:
         run: |
           URL="$(cat "${{ env.SOURCE_CODE_URL_FILE }}")"
           echo "源码 URL: $URL"
-          git clone "$URL" openwrt
+          # partial clone: blob 按需下载，随后按分支 fetch/checkout，大幅缩短克隆时间
+          git clone --filter=blob:none --no-checkout "$URL" openwrt
 
       - name: 链接源码目录 (Link Source Code Directory)
         run: |
           ln -sf ${{ env.OPENWRT_DIR }} ${{ github.workspace }}/openwrt
+
+      - name: 缓存依赖包下载目录 (Cache dl Directory)
+        # dl 内容由 make download 逐文件哈希校验，缓存失效最多导致重新下载，不会产生陈旧固件
+        uses: actions/cache@a55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: ${{ env.OPENWRT_DIR }}/dl
+          key: dl-${{ inputs.device }}-${{ hashFiles('config/immortalwrt-mt798x/*.config') }}
+          restore-keys: |
+            dl-${{ inputs.device }}-
 
       - name: 切换源码分支 (Switch Source Branch)
         run: |
@@ -277,7 +287,7 @@ jobs:
 
       - name: 上传失败日志 (Upload Failure Log)
         if: steps.compile.outputs.compile_completed == 'false'
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@a043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: failed-build-log-${{ inputs.device }}-${{ github.run_id }}
           path: |
@@ -313,7 +323,7 @@ jobs:
 
       - name: 发布失败 Release (Create Failure Release)
         if: steps.compile.outputs.compile_completed == 'false'
-        uses: softprops/action-gh-release@v3
+        uses: softprops/action-gh-release@a3d0d9888cb7fd7b750713d6e236d1fcb99157228
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -429,7 +439,7 @@ jobs:
 
       - name: 上传固件 Artifact (Upload Firmware Artifact)
         if: steps.compile.outputs.compile_completed == 'true'
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@a043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: openwrt-firmware-${{ inputs.device }}
           path: ${{ env.TARGET_DIR }}/
@@ -464,15 +474,17 @@ jobs:
           > [${{ github.workflow }} #${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
           EOF
 
+          echo "| 设备 | Target | 分支 | 完成时间 |" >> $GITHUB_STEP_SUMMARY
+          echo "| --- | --- | --- | --- |" >> $GITHUB_STEP_SUMMARY
           echo "| ✅ ${{ inputs.device }} | ${{ env.TARGET_NAME }} | ${{ env.BUILD_BRANCH }} | $(date '+%H:%M:%S') |" >> $GITHUB_STEP_SUMMARY
 
       - name: 发布 Release (Create Release)
         if: steps.compile.outputs.compile_completed == 'true'
-        uses: softprops/action-gh-release@v3
+        uses: softprops/action-gh-release@a3d0d9888cb7fd7b750713d6e236d1fcb99157228
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ steps.release.outputs.release_tag }}
-          name: "ImmortalWRT ${{ inputs.device }} (手动) - ${{ env.BUILD_DATETIME }}"
+          name: "ImmortalWrt ${{ inputs.device }} (手动) - ${{ env.BUILD_DATETIME }}"
           body_path: release.txt
           files: ${{ env.TARGET_DIR }}/*

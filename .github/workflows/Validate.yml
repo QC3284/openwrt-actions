@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: 检出仓库 (Checkout Repository)
-        uses: actions/checkout@v7.0.1
+        uses: actions/checkout@a3d3c42e5aac5ba805825da76410c181273ba90b1
 
       - name: 校验 Shell 脚本语法 (Validate Shell Scripts)
         run: |
@@ -178,10 +178,21 @@ jobs:
             CONFIG_COUNT=0
             while IFS= read -r -d '' f; do
               CONFIG_COUNT=$((CONFIG_COUNT + 1))
-              if grep -q '^CONFIG_TARGET' "$f" 2>/dev/null; then
-                echo "  ✅ $(basename "$f")"
+              base=$(basename "$f")
+              if ! grep -q '^CONFIG_TARGET' "$f" 2>/dev/null; then
+                echo "  ⚠️ $base (缺少 CONFIG_TARGET 条目，可能无效)"
+                continue
+              fi
+              if [[ "$base" =~ ^immortalwrt-actions-[a-z0-9]+-(.+)-[0-9]{14}\.config$ ]]; then
+                dev="${BASH_REMATCH[1]}"
+                if grep -q "^CONFIG_TARGET_.*_DEVICE_${dev}=y" "$f"; then
+                  echo "  ✅ $base (设备名与 CONFIG_TARGET_DEVICE 一致)"
+                else
+                  echo "  ❌ $base (文件名设备 [$dev] 与 CONFIG_TARGET_DEVICE 不一致)"
+                  FAIL=1
+                fi
               else
-                echo "  ⚠️ $(basename "$f") (缺少 CONFIG_TARGET 条目，可能无效)"
+                echo "  ✅ $base"
               fi
             done < <(find "$CONFIG_DIR" -maxdepth 1 -type f -name "*.config" -print0 2>/dev/null)
             echo "  共 $CONFIG_COUNT 个配置文件"

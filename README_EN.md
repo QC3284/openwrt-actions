@@ -1,6 +1,7 @@
 # openwrt-actions
 
 [![Build ImmortalWrt](https://github.com/QC3284/openwrt-actions/actions/workflows/Build-immortalwrt.yml/badge.svg)](https://github.com/QC3284/openwrt-actions/actions/workflows/Build-immortalwrt.yml)
+[![Build ImmortalWrt Single](https://github.com/QC3284/openwrt-actions/actions/workflows/Build-immortalwrt-single.yml/badge.svg)](https://github.com/QC3284/openwrt-actions/actions/workflows/Build-immortalwrt-single.yml)
 [![Validate](https://github.com/QC3284/openwrt-actions/actions/workflows/Validate.yml/badge.svg)](https://github.com/QC3284/openwrt-actions/actions/workflows/Validate.yml)
 
 A GitHub Actions CI/CD project for building OpenWrt-based firmware. Supports multi-device matrix builds, automatic source change detection, build failure diagnostics, firmware checksum verification, and first-boot auto-configuration (LAN IP, SSH migration, mirror switching).
@@ -149,19 +150,20 @@ Edit the `LAN_IP` variable at the top of `script/immortalwrt-uci-defaults.sh` to
 Automatically embedded as `files/etc/uci-defaults/99-custom.sh` during build and executed on the device's first boot:
 
 1. **LAN IP**: Set to `192.168.5.1/24` (CIDR format, OpenWrt 21.02+ compatible)
-2. **SSH Migration**:
+2. **Default Password**: root password is set to `password` (prevents sshd empty-password lockout; change it after first login)
+3. **SSH Migration**:
    - If openssh-server is installed, disables dropbear via init.d and sets `uci set enabled='0'` for LuCI status sync
    - Enables sshd, modifies `/etc/ssh/sshd_config` for root password login (`PermitRootLogin yes`), and restarts sshd
    - Migrates `/etc/dropbear/` keys and authorized_keys to `/root/.ssh/`
-3. **mirrors.sh**: Interactive repository mirror switching script at `/root/mirrors.sh`
+4. **mirrors.sh**: Interactive repository mirror switching script at `/root/mirrors.sh`
    - 7 mirror options: Official / Custom / USTC / TUNA / Aliyun / Tencent / vsean
    - Command-line argument support (e.g., `mirrors.sh 3`), defaults to custom mirror with no input
    - Compatible with opkg (24.10 and earlier) and apk (25.12 and later)
    - Strips mirror path prefixes (`/openwrt`, `/immortalwrt`, `/lede`), auto-backs up before replacing
    - Dependency-free: only requires busybox ash + sed
-4. **luci-app-quickfile Detection**: If installed, auto-configures nginx UCI and restarts nginx; silently skipped otherwise
-5. **wget HSTS Initialization**: Creates `/root/.wget-hsts` if missing, preventing wget HTTPS download errors
-6. **luci-app-online-upgrade Detection**: If installed, automatically enables online firmware upgrade
+5. **luci-app-quickfile Detection**: If installed, auto-configures nginx UCI and restarts nginx; silently skipped otherwise
+6. **wget HSTS Initialization**: Creates `/root/.wget-hsts` if missing, preventing wget HTTPS download errors
+7. **luci-app-online-upgrade Detection**: If installed, automatically enables online firmware upgrade
    - Checks GitHub Releases for new firmware matching the device via `online-upgrade.sh check`
    - Auto-detects CN/overseas network via IP geolocation (forces download proxy on CN)
    - Backs up configuration before upgrade, restores via `sysupgrade -f`
@@ -172,8 +174,8 @@ Automatically embedded as `files/etc/uci-defaults/99-custom.sh` during build and
 The following is applied by the uci-defaults script on first boot:
 
 - LAN Address: `192.168.5.1/24`
-- Login: `root` / no password (set a password after first login)
-- SSH: If `openssh-server` is selected at build time, sshd is enabled and dropbear disabled with root password login permitted; otherwise dropbear remains active
+- Login: `root` / `password` (default password — change it after first login)
+- SSH: If `openssh-server` is selected at build time, sshd is enabled with root password login permitted, and dropbear is disabled once the default password is set; otherwise dropbear remains active
 - LuCI: Enabled by default if the `luci` package is selected, accessible at `http://192.168.5.1`
 
 ## License

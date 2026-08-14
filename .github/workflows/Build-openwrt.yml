@@ -33,7 +33,7 @@ jobs:
 
     steps:
     - name: 检出仓库 (Checkout Repository)
-      uses: actions/checkout@v7.0.1
+      uses: actions/checkout@a3d3c42e5aac5ba805825da76410c181273ba90b1
       with:
         fetch-depth: 1
 
@@ -49,7 +49,7 @@ jobs:
         echo "Work directory created at /workdir"
 
     - name: 释放磁盘空间 (Free Disk Space)
-      uses: jlumbroso/free-disk-space@v1.3.1
+      uses: jlumbroso/free-disk-space@a54081f138730dfa15788a46383842cd2f914a1be
       with:
         tool-cache: false
         android: true
@@ -268,7 +268,7 @@ jobs:
         du -sh ${{ env.OPENWRT_DIR }}
 
     - name: 上传完整 bin 目录 (Upload Full bin Directory)
-      uses: actions/upload-artifact@v7.0.1
+      uses: actions/upload-artifact@a043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
       with:
         name: OpenWrt_bin${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
         path: ${{ env.OPENWRT_DIR }}/bin
@@ -296,7 +296,7 @@ jobs:
         fi
 
     - name: 上传固件文件 (Upload Firmware Files)
-      uses: actions/upload-artifact@v7.0.1
+      uses: actions/upload-artifact@a043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
       with:
         name: OpenWrt_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
         path: ${{ env.FIRMWARE }}
@@ -319,7 +319,7 @@ jobs:
         echo "Source: $(cat "${{ env.SOURCE_CODE_URL_FILE }}")" >> release.txt
 
     - name: 发布固件 (Release Firmware)
-      uses: softprops/action-gh-release@v3
+      uses: softprops/action-gh-release@a3d0d9888cb7fd7b750713d6e236d1fcb99157228
       if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
