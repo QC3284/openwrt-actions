@@ -107,7 +107,8 @@ jobs:
           # immortalwrt-device-branch.txt: 格式 <设备名> <分支名>
           BRANCH_FILE="config/immortalwrt-device-branch.txt"
           if [ -f "$BRANCH_FILE" ]; then
-            INVALID=$(grep -v '^[[:space:]]*\(#.*\|$\)' "$BRANCH_FILE" | awk 'NF != 2 {print}')
+            # || true: grep 无匹配时退出码为 1，默认 shell (-e -o pipefail) 会终止步骤
+            INVALID=$(grep -v '^[[:space:]]*\(#.*\|$\)' "$BRANCH_FILE" | awk 'NF != 2 {print}' || true)
             if [ -n "$INVALID" ]; then
               echo "  ❌ $BRANCH_FILE 格式错误 (需 <设备名> <分支名>):"
               echo "$INVALID"
@@ -133,7 +134,8 @@ jobs:
           # immortalwrt-diy-control.txt: 值必须为 true/false
           DIY_FILE="config/immortalwrt-diy-control.txt"
           if [ -f "$DIY_FILE" ]; then
-            INVALID=$(grep -v '^[[:space:]]*\(#.*\|$\)' "$DIY_FILE" | awk '$2 != "true" && $2 != "false" {print}')
+            # || true: grep 无匹配时退出码为 1，默认 shell (-e -o pipefail) 会终止步骤
+            INVALID=$(grep -v '^[[:space:]]*\(#.*\|$\)' "$DIY_FILE" | awk '$2 != "true" && $2 != "false" {print}' || true)
             if [ -n "$INVALID" ]; then
               echo "  ❌ $DIY_FILE 值必须为 true/false:"
               echo "$INVALID"

@@ -24,7 +24,7 @@
 | `Clean-old-configs.yml` | — | ✅ 维护中 | 每周日清理旧配置，每设备仅保留最新 |
 | `Validate.yml` | — | ✅ 维护中 | PR/推送时自动校验 Shell/Python/YAML/配置文件 |
 
-`Build-immortalwrt.yml` 定时触发：每周三、六 03:00（北京时间），同时支持手动触发 (`workflow_dispatch` / `repository_dispatch`)。
+`Build-immortalwrt.yml` 定时触发：每周三、六 11:00（北京时间），同时支持手动触发 (`workflow_dispatch` / `repository_dispatch`)。
 `Clean-old-configs.yml` 定时触发：每周日 23:00（北京时间），同时支持手动触发。
 `Build-immortalwrt-single.yml` 仅手动触发，可指定设备名、分支和配置文件。
 

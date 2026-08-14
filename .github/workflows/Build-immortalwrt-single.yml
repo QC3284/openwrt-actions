@@ -182,7 +182,8 @@ jobs:
             [ "${{ inputs.diy_enabled }}" = "false" ] && DIY_ENABLED=false
             echo "DIY 控制: 手动指定为 $DIY_ENABLED"
           elif [ -f "$DIY_CTL" ]; then
-            STATUS=$(grep -v '^[[:space:]]*#' "$DIY_CTL" | awk -v d="$DEVICE_NAME" '$1 == d {print $2; exit}')
+            # || true: grep 无匹配时退出码为 1，GitHub 默认 shell (-e -o pipefail) 会直接终止步骤
+            STATUS=$(grep -v '^[[:space:]]*#' "$DIY_CTL" | awk -v d="$DEVICE_NAME" '$1 == d {print $2; exit}' || true)
             [ "$STATUS" = "false" ] && DIY_ENABLED=false
             echo "DIY 控制: 从文件读取为 $DIY_ENABLED"
           fi
@@ -213,6 +214,10 @@ jobs:
         run: |
           THREAD_COUNT=$(nproc)
           echo "使用 $THREAD_COUNT 线程编译"
+          # 注意: GitHub 默认 shell 为 bash -e -o pipefail，make 失败时管道会立即终止步骤，
+          # 使 -j1 重试与失败诊断链失效；关闭 pipefail 后 tee 管道恢复原有语义，
+          # EXIT_CODE=${PIPESTATUS[0]} 才能正确捕获 make 退出码 (管道尾加 || true 会重置 PIPESTATUS)
+          set +o pipefail
           make -j$THREAD_COUNT 2>&1 | tee make.log
           EXIT_CODE=${PIPESTATUS[0]}
           if [ $EXIT_CODE -ne 0 ]; then

@@ -24,7 +24,7 @@ A GitHub Actions CI/CD project for building OpenWrt-based firmware. Supports mul
 | `Clean-old-configs.yml` | — | ✅ Active | Weekly cleanup, keeping only the latest config per device |
 | `Validate.yml` | — | ✅ Active | Auto-validate Shell/Python/YAML/config on PR/push |
 
-`Build-immortalwrt.yml` schedule: Wed & Sat 03:00 (UTC+8), also supports manual triggers (`workflow_dispatch` / `repository_dispatch`).
+`Build-immortalwrt.yml` schedule: Wed & Sat 11:00 (UTC+8), also supports manual triggers (`workflow_dispatch` / `repository_dispatch`).
 `Clean-old-configs.yml` schedule: Sun 23:00 (UTC+8), also supports manual triggers.
 `Build-immortalwrt-single.yml` is manual-only with device name, branch, and config inputs.
 

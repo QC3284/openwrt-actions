@@ -89,11 +89,18 @@ jobs:
           git commit -m "Clean old build configs [skip ci]
 
           - 每个设备仅保留最新配置，其余归档至 old_configs/"
+          PUSH_OK=false
           for i in 1 2 3; do
             if git push; then
               echo "推送成功"
+              PUSH_OK=true
               break
             fi
             echo "push 失败，第 ${i} 次重试..."
             sleep 5
-          done || { echo "::error::git push 失败 (已重试 3 次)，下次执行时将自动重试"; }
+          done
+          # 原写法 done || { ... } 因 for 循环退出码恒为 sleep 的 0，错误分支永远不会执行
+          if [ "$PUSH_OK" != "true" ]; then
+            echo "::error::git push 失败 (已重试 3 次)，下次定时执行时将自动重试"
+            exit 1
+          fi
