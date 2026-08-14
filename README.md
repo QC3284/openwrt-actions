@@ -68,6 +68,7 @@
    - **成功**：打包 bin 目录 (bin.7z)，生成 `sha256sums.txt` 和 `build-info.txt`（含源码分支/提交等溯源信息），上传 Artifact 并发布 Release
    - **失败**：提取关键错误生成 `error_report.md`（输出到 Step Summary），上传日志并创建草稿 Release
    - 支持 `concurrency` 控制：定时触发时自动取消未完成的旧执行，手动触发不受影响
+   - `dl` 依赖包目录与 ccache 编译缓存接入 actions/cache：均按哈希校验（文件哈希 / 预处理内容哈希），上游更新自动失效重取，不会产生陈旧固件
    - make.log 超过 10 万行时自动截断为首尾各 3000 行，避免上传失败
    - `summarize` job 在编译结束后汇总所有设备结果，输出报告并清理旧 Release
 

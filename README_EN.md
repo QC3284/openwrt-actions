@@ -69,6 +69,7 @@ Select `Build-immortalwrt-single.yml` → Run workflow in the Actions tab:
    - **Success**: Packages bin directory (bin.7z), generates `sha256sums.txt` and `build-info.txt` (with source branch/commit traceability), uploads Artifact and creates Release
    - **Failure**: Extracts key errors into `error_report.md` (visible in Step Summary), uploads logs and creates a draft Release
    - Concurrency control: automatically cancels stale in-progress runs on schedule, manual triggers unaffected
+   - The `dl` download directory and the ccache compilation cache use actions/cache: both are hash-verified (file hashes / preprocessed content hashes), so upstream updates invalidate and refetch automatically — no stale firmware
    - make.logs exceeding 100,000 lines are truncated to first and last 3,000 lines to prevent upload failures
    - A `summarize` job aggregates all device results, outputs a summary report, and cleans up old Releases
 

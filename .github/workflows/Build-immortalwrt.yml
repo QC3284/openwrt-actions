@@ -26,6 +26,8 @@ env:
   ERROR_PATTERN: 'error:|error [0-9]+|fatal|FAILED|collect2|No rule to make target|make\[[0-9]+\].*Error|Segmentation fault|undefined reference|No such file|cannot find|patch.*failed|Hunk.*FAILED'
   LOG_TRUNCATE_LINES: 100000
   LOG_KEEP_LINES: 3000
+  # 单设备 ccache 缓存上限 (3 设备共享 actions/cache 10GB 额度，与 dl 缓存分摊)
+  CCACHE_MAXSIZE: 2G
 
 # GITHUB_TOKEN 最小权限: 推送跟踪提交、创建/清理 Release 需要 contents: write
 permissions:
@@ -276,7 +278,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            build-essential ecj fastjar file flex g++ gcc-multilib g++-multilib gawk gettext git git-core \
+            build-essential ccache ecj fastjar file flex g++ gcc-multilib g++-multilib gawk gettext git git-core \
             java-propose-classpath libelf-dev libncurses5-dev libncursesw5-dev libssl-dev swig python3 \
             python3-pip python3-dev python3-setuptools python3-pyelftools subversion unzip wget zlib1g-dev \
             rsync qemu-utils zip libfuse-dev neofetch p7zip-full curl device-tree-compiler gperf haveged \
@@ -305,6 +307,15 @@ jobs:
           key: dl-${{ matrix.device }}-${{ hashFiles('config/immortalwrt-mt798x/*.config') }}
           restore-keys: |
             dl-${{ matrix.device }}-
+
+      - name: 缓存 ccache 编译缓存 (Cache ccache)
+        # ccache 按预处理内容哈希命中，上游更新自动 miss 重编，不会产生陈旧产物
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: ${{ env.OPENWRT_DIR }}/.ccache
+          key: ccache-${{ matrix.device }}-${{ hashFiles('config/immortalwrt-mt798x/*.config') }}
+          restore-keys: |
+            ccache-${{ matrix.device }}-
 
       - name: 切换源码分支 (Switch Source Branch)
         run: |
