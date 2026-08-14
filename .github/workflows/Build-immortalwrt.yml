@@ -341,6 +341,10 @@ jobs:
             ./scripts/feeds update -a
           fi
           ./scripts/feeds install -a
+          # ccache 与 Rust 包兼容修复: cargo 的 linker 不接受带空格的包装命令
+          # (feeds 中 fish 等包使用 _LINKER:=$(TARGET_CC)，ccache 开启后 TARGET_CC="ccache <gcc>")
+          # TARGET_CC_NOCACHE 已由 rules.mk export，ccache 关闭时二者等价，补丁无副作用
+          find feeds -name Makefile -print0 2>/dev/null | xargs -0 grep -lF '_LINKER:=$(TARGET_CC)' | xargs -r sed -i 's/_LINKER:=$(TARGET_CC)/_LINKER:=$(TARGET_CC_NOCACHE)/g'
 
       - name: 准备配置文件 (Prepare Config File)
         working-directory: ${{ env.OPENWRT_DIR }}
@@ -364,6 +368,12 @@ jobs:
           # 使 -j1 重试与失败诊断链失效；关闭 pipefail 后 tee 管道恢复原有语义，
           # EXIT_CODE=${PIPESTATUS[0]} 才能正确捕获 make 退出码 (管道尾加 || true 会重置 PIPESTATUS)
           set +o pipefail
+          # 预构建 tools/ccache: 避免 -jN 并行时主机 cmake 工具在
+          # CMAKE_C_COMPILER_LAUNCHER 指向尚未安装的 ccache 而配置失败 (如 tools/liblzo)
+          if ! make tools/ccache/compile -j$THREAD_COUNT; then
+            echo "::error::tools/ccache 预构建失败"
+            exit 1
+          fi
           make -j$THREAD_COUNT 2>&1 | tee make.log
           EXIT_CODE=${PIPESTATUS[0]}
 
