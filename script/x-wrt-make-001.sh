@@ -17,6 +17,8 @@ if [ $DOWNLOAD_EXIT -ne 0 ]; then
   echo "将在编译时自动重试下载"
 fi
 
-# 列出并删除小于 1KB 的文件 (通常为下载失败的残缺包)，以便编译时自动重新下载
-find dl -size -1024c -exec ls -l {} \; 2>/dev/null || true
-find dl -size -1024c -exec rm -f {} \; 2>/dev/null || true
+# 列出并删除小于 1KB 的残缺下载文件，以便编译时自动重新下载
+# 注意: 必须跳过 dl/go-mod-cache — 其中存在大量合法的 <1KB 文件 (go.mod/.info 等)，
+# 误删会破坏 Go 包构建 (AdGuardHome: "no required module provides package")
+find dl -path 'dl/go-mod-cache' -prune -o -type f -size -1024c -exec ls -l {} \; 2>/dev/null || true
+find dl -path 'dl/go-mod-cache' -prune -o -type f -size -1024c -exec rm -f {} \; 2>/dev/null || true
