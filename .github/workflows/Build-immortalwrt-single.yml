@@ -176,8 +176,11 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           path: ${{ env.OPENWRT_DIR }}/dl
-          key: dl-${{ inputs.device }}-${{ hashFiles('config/immortalwrt-mt798x/*.config') }}
+          # 每次运行唯一 key: 精确命中不写回, 唯一 key 保证每次 miss→恢复最新快照→保存新快照,
+          # 缓存内容持续滚动更新; 旧快照由 actions/cache 10GB LRU 自动淘汰
+          key: dl-${{ inputs.device }}-${{ hashFiles('config/immortalwrt-mt798x/*.config') }}-${{ github.run_number }}
           restore-keys: |
+            dl-${{ inputs.device }}-${{ hashFiles('config/immortalwrt-mt798x/*.config') }}-
             dl-${{ inputs.device }}-
 
       - name: 缓存 ccache 编译缓存 (Cache ccache)
@@ -185,8 +188,11 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           path: ${{ env.OPENWRT_DIR }}/.ccache
-          key: ccache-${{ inputs.device }}-${{ hashFiles('config/immortalwrt-mt798x/*.config') }}
+          # 每次运行唯一 key: 精确命中不写回, 唯一 key 保证每次 miss→恢复最新快照→保存新快照,
+          # 缓存内容持续滚动更新; 旧快照由 actions/cache 10GB LRU 自动淘汰
+          key: ccache-${{ inputs.device }}-${{ hashFiles('config/immortalwrt-mt798x/*.config') }}-${{ github.run_number }}
           restore-keys: |
+            ccache-${{ inputs.device }}-${{ hashFiles('config/immortalwrt-mt798x/*.config') }}-
             ccache-${{ inputs.device }}-
 
       - name: 切换源码分支 (Switch Source Branch)
