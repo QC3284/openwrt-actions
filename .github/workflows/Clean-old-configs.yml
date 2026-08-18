@@ -74,20 +74,24 @@ jobs:
             fi
           done < <(find "$CONFIG_DIR" -maxdepth 1 -type f -name "immortalwrt-actions-*.config" -print0)
 
-          # 裁剪归档: 删除文件名时间戳超过 90 天的旧配置，控制仓库体积
-          CUTOFF=$(date -d '90 days ago' +%Y%m%d%H%M%S)
+          # 裁剪归档: 每个设备仅保留最近 ARCHIVE_KEEP 个归档
+          # (按文件名时间戳降序，超出部分删除；不按时间一刀切，避免误删历史留档)
+          ARCHIVE_KEEP=10
           PRUNED=0
-          while IFS= read -r -d '' file; do
-            filename=$(basename "$file")
-            if [[ "$filename" =~ ^immortalwrt-actions-([a-z0-9]+)-(.+)-([0-9]{14})\.config$ ]]; then
-              if [[ "${BASH_REMATCH[3]}" < "$CUTOFF" ]]; then
+          for dev in "${!LATEST_CONFIGS[@]}"; do
+            count=0
+            while IFS= read -r -d '' file; do
+              filename=$(basename "$file")
+              [[ "$filename" =~ ^immortalwrt-actions-([a-z0-9]+)-${dev}-([0-9]{14})\.config$ ]] || continue
+              count=$((count + 1))
+              if [ $count -gt "$ARCHIVE_KEEP" ]; then
                 rm -f "$file"
                 PRUNED=$((PRUNED + 1))
-                echo "裁剪过期归档: $filename"
+                echo "裁剪超量归档 [$dev]: $filename"
               fi
-            fi
-          done < <(find "$ARCHIVE_DIR" -maxdepth 1 -type f -name "immortalwrt-actions-*.config" -print0 2>/dev/null)
-          echo "共裁剪 $PRUNED 个过期归档 (90 天前)"
+            done < <(find "$ARCHIVE_DIR" -maxdepth 1 -type f -name "immortalwrt-actions-*-${dev}-*.config" -print0 2>/dev/null | sort -z -r)
+          done
+          echo "共裁剪 $PRUNED 个超量归档 (每设备保留 $ARCHIVE_KEEP 个)"
 
           echo ""
           echo "========== 清理完成 =========="
