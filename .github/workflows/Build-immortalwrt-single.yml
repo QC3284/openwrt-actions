@@ -350,7 +350,7 @@ jobs:
 
       - name: 发布失败 Release (Create Failure Release)
         if: steps.compile.outputs.compile_completed != 'true'
-        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -518,7 +518,7 @@ jobs:
 
       - name: 发布 Release (Create Release)
         if: steps.compile.outputs.compile_completed == 'true'
-        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
