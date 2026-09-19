@@ -134,7 +134,12 @@ jobs:
             DEVICE_MISSING=0
             while IFS= read -r dev; do
               [ -z "$dev" ] && continue
-              if [ -z "${CONFIG_DEVICES[$dev]:-}" ]; then
+              # 设备名白名单: 与配置文件命名规则一致 ([a-z0-9_-])。
+              # 否则 "../x" 这类值会通过 CONFIG_DEV_DIR 之外的路径探测而误报通过
+              if [[ ! "$dev" =~ ^[a-z0-9_-]+$ ]]; then
+                echo "  ❌ 启用列表含非法设备名: [$dev] (仅允许小写字母/数字/下划线/连字符)"
+                DEVICE_MISSING=$((DEVICE_MISSING + 1))
+              elif [ -z "${CONFIG_DEVICES[$dev]:-}" ]; then
                 echo "  ❌ 启用设备 [$dev] 在 $CONFIG_DEV_DIR/ 下没有配置文件 (定时编译会静默跳过该设备)"
                 DEVICE_MISSING=$((DEVICE_MISSING + 1))
               fi
