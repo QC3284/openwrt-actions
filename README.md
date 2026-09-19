@@ -49,6 +49,8 @@
 6. 在 Actions 页面手动触发 `Build-immortalwrt-single.yml` 测试单个设备
 7. 确认无误后，`Build-immortalwrt.yml` 将按定时自动执行编译
 
+> 💡 步骤 3~5 也可用一键脚本完成：`bash script/setup-device.sh --config <你的 .config 路径>`，详见下方[一键接入设备配置](#一键接入设备配置)。
+
 ### 单设备快速测试 (ImmortalWrt)
 
 在 Actions 页面选择 `Build-immortalwrt-single.yml` → Run workflow：
@@ -95,6 +97,7 @@
     ├── immortalwrt-actions-diy1.sh   # feeds update 前：克隆第三方插件
     ├── immortalwrt-actions-diy2.sh   # feeds update 后：替换 OpenClash
     ├── immortalwrt-switch-branch.sh  # 按机型切换源码分支
+    ├── setup-device.sh             # 一键接入设备配置 (命名/启用/分支/DIY)
     ├── immortalwrt-uci-defaults.sh    # uci-defaults: LAN IP, SSH 切换, mirrors.sh
     ├── lede-github-actions-rl.sh     # LEDE: 生成 Release 说明
     ├── x-wrt-actions-txt-001.sh      # X-Wrt: 生成 Release 说明
@@ -103,6 +106,13 @@
 ```
 
 ## 常用操作 (ImmortalWrt)
+
+### 一键接入设备配置 (setup-device.sh)
+
+- 交互模式：`bash script/setup-device.sh`
+- 命令行模式：`bash script/setup-device.sh --config <路径> [--chip mt7981] [--branch 25.12-dev-wifi7] [--diy true|false] [--yes] [--dry-run]`
+
+脚本自动完成：从 `.config` 提取设备名 → 按 `芯片-设备-时间戳` 命名复制 → 加入启用列表 →（非默认分支时）写入分支映射 → DIY 缺省不写控制文件（默认 true），仅 `false` 写入、`true` 时清理旧显式设置。芯片型号优先取该设备历史配置最近使用值，无历史时交互询问或 `--chip` 指定；重复运行幂等（内容与最新配置一致时不会新增副本）；`--dry-run` 只预览不落盘。
 
 ### 新增/更新设备配置
 

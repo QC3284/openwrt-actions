@@ -49,6 +49,8 @@ A GitHub Actions CI/CD project for building OpenWrt-based firmware. Supports mul
 6. Manually trigger `Build-immortalwrt-single.yml` from the Actions tab to test a single device
 7. Once verified, `Build-immortalwrt.yml` will run automatically on schedule
 
+> 💡 Steps 3~5 can also be done with one command: `bash script/setup-device.sh --config <your .config path>`. See [One-Click Device Setup](#one-click-device-setup-setup-devicesh) below.
+
 ### Single-Device Test (ImmortalWrt)
 
 Select `Build-immortalwrt-single.yml` → Run workflow in the Actions tab:
@@ -96,6 +98,7 @@ Select `Build-immortalwrt-single.yml` → Run workflow in the Actions tab:
     ├── immortalwrt-actions-diy1.sh   # Pre-feeds-update: clone third-party packages
     ├── immortalwrt-actions-diy2.sh   # Post-feeds-update: replace OpenClash
     ├── immortalwrt-switch-branch.sh  # Switch source branch per device
+    ├── setup-device.sh             # One-click device setup (naming/enable/branch/DIY)
     ├── immortalwrt-uci-defaults.sh   # uci-defaults: LAN IP, SSH migration, mirrors.sh
     ├── lede-github-actions-rl.sh     # LEDE: generate release notes
     ├── x-wrt-actions-txt-001.sh      # X-Wrt: generate release notes
@@ -104,6 +107,13 @@ Select `Build-immortalwrt-single.yml` → Run workflow in the Actions tab:
 ```
 
 ## Common Operations (ImmortalWrt)
+
+### One-Click Device Setup (setup-device.sh)
+
+- Interactive: `bash script/setup-device.sh`
+- CLI: `bash script/setup-device.sh --config <path> [--chip mt7981] [--branch 25.12-dev-wifi7] [--diy true|false] [--yes] [--dry-run]`
+
+The script: extracts the device name from `.config` → copies it as `chip-device-timestamp.config` → adds it to the enabled list → writes the branch mapping (only for non-default branches) → DIY: nothing is written by default (true); only `false` is written, and `true` clears any previous explicit entry. The chip is inferred from the device's most recent historical config, otherwise prompted or given via `--chip`. Re-running is idempotent (no duplicate copy when content is unchanged); `--dry-run` previews without writing.
 
 ### Adding / Updating a Device Config
 
