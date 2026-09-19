@@ -22,7 +22,7 @@ A GitHub Actions CI/CD project for building OpenWrt-based firmware. Supports mul
 | `Build-lede.yml` | [coolsnowwolf/lede](https://github.com/coolsnowwolf/lede) | ⛔ Discontinued | Build LEDE |
 | `Build-openwrt.yml` | [openwrt/openwrt](https://git.openwrt.org/openwrt/openwrt.git) | ⛔ Discontinued | Build official OpenWrt (main branch) |
 | `Build-X-wrt.yml` | [x-wrt/x-wrt](https://github.com/x-wrt/x-wrt) | ⛔ Discontinued | Build X-Wrt by specified tag |
-| `Clean-old-configs.yml` | — | ✅ Active | Weekly cleanup, keeping only the latest config per device |
+| `Clean-old-configs.yml` | — | ✅ Active | Weekly archiving: latest 1 per device in `config/immortalwrt-mt798x/`, rolling latest 10 per device in `old_configs/` |
 | `Validate.yml` | — | ✅ Active | Auto-validate Shell/Python/YAML/config on PR/push |
 
 `Build-immortalwrt.yml` schedule: Wed & Sat 11:00 (UTC+8), also supports manual triggers (`workflow_dispatch` / `repository_dispatch`).

@@ -22,7 +22,7 @@
 | `Build-lede.yml` | [coolsnowwolf/lede](https://github.com/coolsnowwolf/lede) | ⛔ 停止更新 | 编译 LEDE |
 | `Build-openwrt.yml` | [openwrt/openwrt](https://git.openwrt.org/openwrt/openwrt.git) | ⛔ 停止更新 | 编译官方 OpenWrt (main 分支) |
 | `Build-X-wrt.yml` | [x-wrt/x-wrt](https://github.com/x-wrt/x-wrt) | ⛔ 停止更新 | 按指定 tag 编译 X-Wrt |
-| `Clean-old-configs.yml` | — | ✅ 维护中 | 每周日清理旧配置，每设备仅保留最新 |
+| `Clean-old-configs.yml` | — | ✅ 维护中 | 每周日归档旧配置：`config/immortalwrt-mt798x/` 每设备保留最新 1 份，`old_configs/` 每设备滚动保留最近 10 份 |
 | `Validate.yml` | — | ✅ 维护中 | PR/推送时自动校验 Shell/Python/YAML/配置文件 |
 
 `Build-immortalwrt.yml` 定时触发：每周三、六 11:00（北京时间），同时支持手动触发 (`workflow_dispatch` / `repository_dispatch`)。
