@@ -98,6 +98,7 @@
     ├── immortalwrt-actions-diy2.sh   # feeds update 后：替换 OpenClash
     ├── immortalwrt-switch-branch.sh  # 按机型切换源码分支
     ├── setup-device.sh             # 一键接入设备配置 (命名/启用/分支/DIY)
+    ├── selftest-validate.sh        # 自测 Validate.yml 的配置校验步骤 (CI 中执行)
     ├── immortalwrt-uci-defaults.sh    # uci-defaults: LAN IP, SSH 切换, mirrors.sh
     ├── lede-github-actions-rl.sh     # LEDE: 生成 Release 说明
     ├── x-wrt-actions-txt-001.sh      # X-Wrt: 生成 Release 说明
@@ -113,6 +114,14 @@
 - 命令行模式：`bash script/setup-device.sh --config <路径> [--chip mt7981] [--branch 25.12-dev-wifi7] [--diy true|false] [--yes] [--dry-run]`
 
 脚本自动完成：从 `.config` 提取设备名 → 按 `芯片-设备-时间戳` 命名复制 → 加入启用列表 →（非默认分支时）写入分支映射 → DIY 缺省不写控制文件（默认 true），仅 `false` 写入、`true` 时清理旧显式设置。芯片型号优先取该设备历史配置最近使用值，无历史时交互询问或 `--chip` 指定；重复运行幂等（内容与最新配置一致时不会新增副本）；`--dry-run` 只预览不落盘。
+
+### 校验逻辑自测 (selftest-validate.sh)
+
+- 运行：`bash script/selftest-validate.sh`（CI 的 Validate 工作流会自动执行）
+
+直接从 `.github/workflows/Validate.yml` 抽取配置校验步骤的脚本原文（逐字节复用 CI 执行的代码），在临时镜像目录上跑 15 项场景矩阵，断言退出码与 ❌ 消息数量：空启用列表、未知设备、路径穿越绕过、大写设备名、设备名写错致配置丢失、设备目录为空、行尾注释/空白、重复行、必需文件缺失等。
+
+为什么需要它：这类校验一旦被改坏，表现是「该红却绿」——推送全绿、定时编译静默跳过设备、数周后才被发现（历史上的 `e70cbc5` 即属此类：编译失败却显示绿色）；而只看 CI 绿不绿，无法区分「护栏生效」与「护栏被摘掉」。
 
 ### 新增/更新设备配置
 

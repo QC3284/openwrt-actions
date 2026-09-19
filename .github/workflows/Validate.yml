@@ -240,6 +240,11 @@ jobs:
           echo ""
           echo "全部通过"
 
+      - name: 配置校验自测 (Self-test Config Validation)
+        # 本步骤的检查一旦被改坏, 表现是"该红却绿": 推送全绿、定时编译静默跳过设备。
+        # 自测直接从本文件抽取上面两步的脚本原文 (逐字节复用 CI 执行的代码) 跑场景矩阵。
+        run: bash script/selftest-validate.sh
+
       - name: ShellCheck (静态分析 Shell 脚本)
         # 固定到 commit SHA: 上游 2024-06 后未再更新，@master 为浮动引用
         uses: ludeeus/action-shellcheck@00b27aa7cb85167568cb48a3838b75f4265f2bca

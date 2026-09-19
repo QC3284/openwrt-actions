@@ -99,6 +99,7 @@ Select `Build-immortalwrt-single.yml` → Run workflow in the Actions tab:
     ├── immortalwrt-actions-diy2.sh   # Post-feeds-update: replace OpenClash
     ├── immortalwrt-switch-branch.sh  # Switch source branch per device
     ├── setup-device.sh             # One-click device setup (naming/enable/branch/DIY)
+    ├── selftest-validate.sh        # Self-test for the config validation steps (runs in CI)
     ├── immortalwrt-uci-defaults.sh   # uci-defaults: LAN IP, SSH migration, mirrors.sh
     ├── lede-github-actions-rl.sh     # LEDE: generate release notes
     ├── x-wrt-actions-txt-001.sh      # X-Wrt: generate release notes
@@ -114,6 +115,14 @@ Select `Build-immortalwrt-single.yml` → Run workflow in the Actions tab:
 - CLI: `bash script/setup-device.sh --config <path> [--chip mt7981] [--branch 25.12-dev-wifi7] [--diy true|false] [--yes] [--dry-run]`
 
 The script: extracts the device name from `.config` → copies it as `chip-device-timestamp.config` → adds it to the enabled list → writes the branch mapping (only for non-default branches) → DIY: nothing is written by default (true); only `false` is written, and `true` clears any previous explicit entry. The chip is inferred from the device's most recent historical config, otherwise prompted or given via `--chip`. Re-running is idempotent (no duplicate copy when content is unchanged); `--dry-run` previews without writing.
+
+### Self-Test for Validation Logic (selftest-validate.sh)
+
+- Run: `bash script/selftest-validate.sh` (the Validate workflow runs it automatically)
+
+It extracts the config-validation steps' scripts verbatim from `.github/workflows/Validate.yml` (reusing the exact code CI runs) and replays a 15-case matrix in a temporary mirror directory, asserting exit codes and the number of ❌ messages: empty enable list, unknown device, path-traversal bypass, uppercase device name, missing config for an enabled device, empty config directory, trailing comments/whitespace, duplicate lines, missing required files.
+
+Why it exists: when such a check breaks, the symptom is a false green — the push passes, scheduled builds silently skip devices, and it surfaces weeks later (as in `e70cbc5`, where a failed build was reported green). A green CI run alone cannot distinguish "the guard works" from "the guard was removed".
 
 ### Adding / Updating a Device Config
 
