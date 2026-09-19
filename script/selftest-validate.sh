@@ -191,6 +191,54 @@ else
   printf '  ❌ %-46s 步骤内已找不到设备↔配置判定文本\n' "内容步骤含设备↔配置判定 (哨兵)"
 fi
 
+# 不变量: 失败草稿 Release 的保留额度必须 <= 1
+# 该动作只删除"不匹配保留关键字且超出保留额度"的 Release —— 曾把矩阵工作流
+# 设为 5, 而历史失败草稿常年只有 2 个, 于是每次运行都成功(绿)但一个也没删。
+# 单设备工作流此前压根没有清理步骤, 失败草稿只增不减。
+check_keep_latest() { # $1=workflow 文件 $2=期望 <= 的上限
+  local file="$1" limit="$2" value
+  # 按缩进逐行扫描, 不靠跨行正则: 正则版曾越过步骤边界读到下一个步骤的
+  # keep_latest=20 (假红), 且多层转义极易出错。扫描规则:
+  # 以 "      - name:" 开头算一个步骤, 找到名字含 failed 的那个, 在其内部取值。
+  value=$(python3 - "$file" <<'PY'
+import sys
+
+lines = open(sys.argv[1], encoding="utf-8").read().splitlines()
+step, in_step, value = "", False, ""
+for line in lines:
+    if line.startswith("      - name:"):
+        if step and "failed" in step.lower() and value:
+            break
+        step, in_step, value = line.split("- name:", 1)[1].strip(), True, ""
+    elif in_step and line.lstrip().startswith("releases_keep_latest:"):
+        value = line.split("releases_keep_latest:", 1)[1].strip()
+# 只认"失败草稿清理步骤"内的取值。刻意不做"找不到就取首处"的回退:
+# 那样一旦该步骤被改名或删除, 会读到正式 Release 清理的 keep_latest=20
+# 并判为通过 —— 能被骗过的护栏比没有护栏更糟。
+if value and "failed" in step.lower():
+    print(value)
+PY
+)
+  if [ -z "$value" ]; then
+    FAILED=$((FAILED + 1))
+    printf '  ❌ %-46s %s 内没有失败草稿清理步骤\n' "失败草稿保留额度 (不变量)" "$(basename "$file")"
+    return
+  fi
+  if [ "$value" -le "$limit" ]; then
+    PASSED=$((PASSED + 1))
+    printf '  ✅ %-46s %s: keep_latest=%s (≤%s)\n' "失败草稿保留额度 (不变量)" "$(basename "$file")" "$value" "$limit"
+  else
+    FAILED=$((FAILED + 1))
+    printf '  ❌ %-46s %s: keep_latest=%s > %s → 该清理永不生效\n' \
+      "失败草稿保留额度 (不变量)" "$(basename "$file")" "$value" "$limit"
+  fi
+}
+
+echo
+echo "--- 失败草稿 Release 清理不变量 ---"
+check_keep_latest "$REPO_DIR/.github/workflows/Build-immortalwrt.yml" 1
+check_keep_latest "$REPO_DIR/.github/workflows/Build-immortalwrt-single.yml" 1
+
 echo
 echo "--- 文件存在性步骤 (Validate Config Files) ---"
 build_mirror; run_step "$TMP/presence.sh"

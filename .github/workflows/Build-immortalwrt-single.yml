@@ -526,3 +526,17 @@ jobs:
           name: "ImmortalWrt ${{ inputs.device }} (手动) - ${{ env.BUILD_DATETIME }}"
           body_path: release.txt
           files: ${{ env.TARGET_DIR }}/*
+
+      # 本工作流此前没有任何清理失败 Release 的逻辑, 失败草稿只增不减。
+      # 只在编译成功时清扫 (失败时保留刚生成的那份诊断供查看)。
+      # keep_latest 必须小于"历史失败草稿数量"才有效: 该动作只删除
+      # "不匹配保留关键字且超出保留额度"的 Release, 设得过大就等于永不删除。
+      - name: 清理失败草稿 Release (Clean Failed Draft Releases)
+        if: always() && steps.compile.outputs.compile_completed == 'true'
+        uses: ophub/delete-releases-workflows@185ead47518014ad09d25f358e70353483bdb22f
+        with:
+          gh_token: ${{ secrets.GITHUB_TOKEN }}
+          delete_releases: true
+          releases_keep_latest: 1
+          prerelease_option: 'true'
+          delete_tags: true

@@ -693,7 +693,12 @@ jobs:
         with:
           gh_token: ${{ secrets.GITHUB_TOKEN }}
           delete_releases: true
-          releases_keep_latest: 5
+          # 必须小于"历史失败草稿数量", 否则本条永不生效: 该动作只删除
+          # "不匹配保留关键字且超出 releases_keep_latest 的最新保留额度"的
+          # Release —— 曾设为 5, 而失败草稿常年只有 2 个, 于是每次运行都
+          # 成功(绿)但一个也没删; 实测 2026-08-14 起的草稿一直滞留。
+          # 保留 1 个用于查看最近一次失败的诊断, 其余的删。
+          releases_keep_latest: 1
           prerelease_option: 'true'
           delete_tags: true
 
