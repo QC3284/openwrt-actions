@@ -105,15 +105,45 @@ jobs:
           echo "=== 检查配置文件内容格式 ==="
           FAIL=0
 
-          # immortalwrt-mt798x-enable-configs.txt: 非空行即有效设备名
+          # immortalwrt-mt798x-enable-configs.txt: 非空行即有效设备名，且每个设备必须有对应配置
           ENABLE_FILE="config/immortalwrt-mt798x-enable-configs.txt"
           if [ -f "$ENABLE_FILE" ]; then
-            COUNT=$(grep -cv '^[[:space:]]*\(#.*\|$\)' "$ENABLE_FILE" || echo 0)
+            # || true: grep -c 计到 0 时自身返回 1 且已输出 "0"，若再 || echo 0 会让 COUNT
+            # 变成两行 "0\n0"，[-eq] 的报错被 if 条件吞掉 → 空列表被误判为通过
+            COUNT=$(grep -cv '^[[:space:]]*\(#.*\|$\)' "$ENABLE_FILE" || true)
             if [ "$COUNT" -eq 0 ]; then
               echo "  ❌ $ENABLE_FILE 未包含任何启用的设备"
               FAIL=1
             else
               echo "  ✅ $ENABLE_FILE ($COUNT 个设备)"
+            fi
+
+            # 汇总 config/immortalwrt-mt798x/ 下已有配置的设备名
+            CONFIG_DEV_DIR="config/immortalwrt-mt798x"
+            declare -A CONFIG_DEVICES
+            while IFS= read -r -d '' f; do
+              base=$(basename "$f")
+              if [[ "$base" =~ ^immortalwrt-actions-[a-z0-9]+-(.+)-[0-9]{14}\.config$ ]]; then
+                CONFIG_DEVICES["${BASH_REMATCH[1]}"]=1
+              fi
+            done < <(find "$CONFIG_DEV_DIR" -maxdepth 1 -type f -name "immortalwrt-actions-*.config" -print0 2>/dev/null)
+
+            # 启用列表中的每个设备都必须有配置: 否则 Build-immortalwrt.yml 的 prepare
+            # 只会打 ::warning:: 跳过 (矩阵为空时整次编译 0 秒结束且显示绿色)，
+            # 设备名写错或忘放 .config 会被静默忽略
+            DEVICE_MISSING=0
+            while IFS= read -r dev; do
+              [ -z "$dev" ] && continue
+              if [ -z "${CONFIG_DEVICES[$dev]:-}" ]; then
+                echo "  ❌ 启用设备 [$dev] 在 $CONFIG_DEV_DIR/ 下没有配置文件 (定时编译会静默跳过该设备)"
+                DEVICE_MISSING=$((DEVICE_MISSING + 1))
+              fi
+            done < <(sed -e 's/#.*//' -e 's/[[:space:]]//g' "$ENABLE_FILE")
+            if [ "$DEVICE_MISSING" -ne 0 ]; then
+              FAIL=1
+            elif [ "$COUNT" -gt 0 ]; then
+              # 启用列表为空时已在上方报错，此处不再输出 ✅ 以免自相矛盾
+              echo "  ✅ $ENABLE_FILE 中每个启用设备均有配置文件"
             fi
           fi
 
