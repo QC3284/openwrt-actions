@@ -49,7 +49,7 @@ jobs:
         echo "Work directory created at /workdir"
 
     - name: 释放磁盘空间 (Free Disk Space)
-      uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be
+      uses: jlumbroso/free-disk-space@ceedf095f4ec1a097402bc6bd80831f2e1a6fde6
       with:
         tool-cache: false
         android: true
@@ -268,7 +268,7 @@ jobs:
         du -sh ${{ env.OPENWRT_DIR }}
 
     - name: 上传完整 bin 目录 (Upload Full bin Directory)
-      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
       with:
         name: OpenWrt_bin${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
         path: ${{ env.OPENWRT_DIR }}/bin
@@ -296,7 +296,7 @@ jobs:
         fi
 
     - name: 上传固件文件 (Upload Firmware Files)
-      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
       with:
         name: OpenWrt_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
         path: ${{ env.FIRMWARE }}

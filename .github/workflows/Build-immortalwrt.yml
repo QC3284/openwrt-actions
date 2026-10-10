@@ -264,7 +264,7 @@ jobs:
           sudo chown "$(id -u):$(id -g)" /workdir
 
       - name: 释放磁盘空间 (Free Disk Space)
-        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be
+        uses: jlumbroso/free-disk-space@ceedf095f4ec1a097402bc6bd80831f2e1a6fde6
         with:
           tool-cache: false
           android: true
@@ -440,7 +440,7 @@ jobs:
 
       - name: 上传失败日志 (Upload Failure Log)
         if: steps.compile.outputs.compile_completed != 'true'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: failed-build-log-${{ matrix.device }}-${{ github.run_id }}
           path: |
@@ -620,7 +620,7 @@ jobs:
 
       - name: 上传固件 Artifact (Upload Firmware Artifact)
         if: steps.compile.outputs.compile_completed == 'true'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: openwrt-firmware-${{ matrix.device }}
           path: ${{ env.TARGET_DIR }}/
