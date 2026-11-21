@@ -1,7 +1,7 @@
 #!/bin/sh
 # File: immortalwrt-uci-defaults.sh — 首次启动自动配置 (LAN IP / SSH / 换源)
 # Copyright (c) 2024-2026 QC3284. GPL-3.0-only.
-# https://github.com/QC3284/openwrt-actions
+# https://github.com/QC3284/immortalwrt-actions
 
 # ImmortalWrt uci-defaults 自定义脚本 (首次启动时自动执行)
 #   - sed, grep, mv, cp, mkdir, chmod, rm, cat (busybox)

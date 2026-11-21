@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # File: immortalwrt-switch-branch.sh — 按机型切换源码分支
 # Copyright (c) 2024-2026 QC3284. GPL-3.0-only.
-# https://github.com/QC3284/openwrt-actions
+# https://github.com/QC3284/immortalwrt-actions
 
 # 用法: bash immortalwrt-switch-branch.sh <设备名> <源码目录> <设备分支文件> [默认分支文件] [显式分支]
 #   显式分支: 可选，指定后跳过配置文件查找直接使用该分支 (但仍做远端存在性校验)

@@ -1,6 +1,6 @@
 # File: Clean-old-configs.yml — 每周清理旧编译配置
 # Copyright (c) 2024-2026 QC3284. GPL-3.0-only.
-# https://github.com/QC3284/openwrt-actions
+# https://github.com/QC3284/immortalwrt-actions
 
 name: 清理旧编译配置 (Clean Old Build Configs)
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # File: selftest-build-guards.sh — Build 工作流「静默失败护栏」的行为自测
 # Copyright (c) 2024-2026 QC3284. GPL-3.0-only.
-# https://github.com/QC3284/openwrt-actions
+# https://github.com/QC3284/immortalwrt-actions
 #
 # 为什么需要它: 这类护栏的失效方式恰恰是"该红却绿" —— 空矩阵或空产物时整次
 # 运行 0 秒结束且显示成功, 人肉回归只会看到绿灯。这里直接从两个 Build 工作流
@@ -238,7 +238,7 @@ chmod +x "$TMP/bin/gh"
 render_matrix_json "$TMP/verify.sh" '[{"device":"glinet_gl-mt3000"},{"device":"konka_komi-a31"}]' "$TMP/verify-run.sh" || exit 1
 
 verify_scenario() { # $1=场景名 $2=gh 场景 $3=期望退出码 $4=期望消息正则
-  PATH="$TMP/bin:$PATH" FAKE_SCENARIO="$2" REPO="QC3284/openwrt-actions" RUN_ID=12345 \
+  PATH="$TMP/bin:$PATH" FAKE_SCENARIO="$2" REPO="QC3284/immortalwrt-actions" RUN_ID=12345 \
     run_step "$WD" "$TMP/verify-run.sh"
   scenario "$1" "$3" "$4"
 }

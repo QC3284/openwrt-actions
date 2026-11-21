@@ -1,8 +1,8 @@
-# openwrt-actions
+# immortalwrt-actions
 
-[![Build ImmortalWrt](https://github.com/QC3284/openwrt-actions/actions/workflows/Build-immortalwrt.yml/badge.svg)](https://github.com/QC3284/openwrt-actions/actions/workflows/Build-immortalwrt.yml)
-[![Build ImmortalWrt Single](https://github.com/QC3284/openwrt-actions/actions/workflows/Build-immortalwrt-single.yml/badge.svg)](https://github.com/QC3284/openwrt-actions/actions/workflows/Build-immortalwrt-single.yml)
-[![Validate](https://github.com/QC3284/openwrt-actions/actions/workflows/Validate.yml/badge.svg)](https://github.com/QC3284/openwrt-actions/actions/workflows/Validate.yml)
+[![Build ImmortalWrt](https://github.com/QC3284/immortalwrt-actions/actions/workflows/Build-immortalwrt.yml/badge.svg)](https://github.com/QC3284/immortalwrt-actions/actions/workflows/Build-immortalwrt.yml)
+[![Build ImmortalWrt Single](https://github.com/QC3284/immortalwrt-actions/actions/workflows/Build-immortalwrt-single.yml/badge.svg)](https://github.com/QC3284/immortalwrt-actions/actions/workflows/Build-immortalwrt-single.yml)
+[![Validate](https://github.com/QC3284/immortalwrt-actions/actions/workflows/Validate.yml/badge.svg)](https://github.com/QC3284/immortalwrt-actions/actions/workflows/Validate.yml)
 
 > [English](README_EN.md)
 

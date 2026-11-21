@@ -1,6 +1,6 @@
 # File: Build-immortalwrt-single.yml — ImmortalWrt 单设备手动编译
 # Copyright (c) 2024-2026 QC3284. GPL-3.0-only.
-# https://github.com/QC3284/openwrt-actions
+# https://github.com/QC3284/immortalwrt-actions
 #
 # ⚠️ 同步提醒：本文件与 Build-immortalwrt.yml 共享约 70% 编译逻辑。
 # 修改编译流程（setup/compile/package/release）时，请同步检查另一个文件是否需要相同更新。

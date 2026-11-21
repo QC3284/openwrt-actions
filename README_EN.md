@@ -1,8 +1,8 @@
-# openwrt-actions
+# immortalwrt-actions
 
-[![Build ImmortalWrt](https://github.com/QC3284/openwrt-actions/actions/workflows/Build-immortalwrt.yml/badge.svg)](https://github.com/QC3284/openwrt-actions/actions/workflows/Build-immortalwrt.yml)
-[![Build ImmortalWrt Single](https://github.com/QC3284/openwrt-actions/actions/workflows/Build-immortalwrt-single.yml/badge.svg)](https://github.com/QC3284/openwrt-actions/actions/workflows/Build-immortalwrt-single.yml)
-[![Validate](https://github.com/QC3284/openwrt-actions/actions/workflows/Validate.yml/badge.svg)](https://github.com/QC3284/openwrt-actions/actions/workflows/Validate.yml)
+[![Build ImmortalWrt](https://github.com/QC3284/immortalwrt-actions/actions/workflows/Build-immortalwrt.yml/badge.svg)](https://github.com/QC3284/immortalwrt-actions/actions/workflows/Build-immortalwrt.yml)
+[![Build ImmortalWrt Single](https://github.com/QC3284/immortalwrt-actions/actions/workflows/Build-immortalwrt-single.yml/badge.svg)](https://github.com/QC3284/immortalwrt-actions/actions/workflows/Build-immortalwrt-single.yml)
+[![Validate](https://github.com/QC3284/immortalwrt-actions/actions/workflows/Validate.yml/badge.svg)](https://github.com/QC3284/immortalwrt-actions/actions/workflows/Validate.yml)
 
 A GitHub Actions CI/CD project for building OpenWrt-based firmware. Supports multi-device matrix builds, automatic source change detection, build failure diagnostics, firmware checksum verification, and first-boot auto-configuration (LAN IP, SSH migration, mirror switching).
 

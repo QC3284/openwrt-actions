@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # File: setup-device.sh — 设备配置一键接入 (README 快速开始第 3~5 步)
 # Copyright (c) 2024-2026 QC3284. GPL-3.0-only.
-# https://github.com/QC3284/openwrt-actions
+# https://github.com/QC3284/immortalwrt-actions
 
 set -euo pipefail
 

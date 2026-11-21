@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # File: selftest-validate.sh — Validate.yml 配置校验步骤的行为自测
 # Copyright (c) 2024-2026 QC3284. GPL-3.0-only.
-# https://github.com/QC3284/openwrt-actions
+# https://github.com/QC3284/immortalwrt-actions
 #
 # 为什么需要它: "启用设备↔配置文件" 这类校验一旦被改坏, 表现是"该红却绿" ——
 # 推送全绿、定时编译静默跳过设备、几个月后才发现。人肉回归已被证明会看走眼
