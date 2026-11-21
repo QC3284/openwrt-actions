@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# File: x-wrt-make-001.sh — 预下载依赖并清理残缺包 (ImmortalWrt / X-Wrt 共用)
+# File: prefetch-download.sh — 预下载依赖并清理残缺包 (ImmortalWrt 编译前调用)
 # Copyright (c) 2024-2026 QC3284. GPL-3.0-only.
 # https://github.com/QC3284/openwrt-actions
 

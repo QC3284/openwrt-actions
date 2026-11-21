@@ -6,10 +6,8 @@
 
 A GitHub Actions CI/CD project for building OpenWrt-based firmware. Supports multi-device matrix builds, automatic source change detection, build failure diagnostics, firmware checksum verification, and first-boot auto-configuration (LAN IP, SSH migration, mirror switching).
 
-> [!WARNING]
-> Only the **ImmortalWrt** workflows are actively maintained. The remaining workflows (LEDE / OpenWrt / X-Wrt) have been discontinued. They may still run but firmware may contain unresolved defects, and related issues will not be addressed. Use at your own risk.
->
-> Discontinued workflows are provided as-is, with no guarantee of functionality. Firmware from these workflows may contain unpatched defects. No maintenance, updates, or support will be provided.
+> [!NOTE]
+> This repository maintains the **ImmortalWrt** build pipeline only. The discontinued LEDE / OpenWrt / X-Wrt workflows and their dedicated scripts/configs were removed in Nov 2026; they remain recoverable from git history.
 
 > [中文文档](README.md)
 
@@ -19,9 +17,6 @@ A GitHub Actions CI/CD project for building OpenWrt-based firmware. Supports mul
 | --- | --- | --- | --- |
 | `Build-immortalwrt.yml` | [immortalwrt-mt798x-rebase](https://github.com/chasey-dev/immortalwrt-mt798x-rebase) | ✅ Active | Matrix parallel builds with change-skip, failure diagnostics, SHA256 checksums, build traceability |
 | `Build-immortalwrt-single.yml` | [immortalwrt-mt798x-rebase](https://github.com/chasey-dev/immortalwrt-mt798x-rebase) | ✅ Active | Single-device manual build with branch and config override |
-| `Build-lede.yml` | [coolsnowwolf/lede](https://github.com/coolsnowwolf/lede) | ⛔ Discontinued | Build LEDE |
-| `Build-openwrt.yml` | [openwrt/openwrt](https://git.openwrt.org/openwrt/openwrt.git) | ⛔ Discontinued | Build official OpenWrt (main branch) |
-| `Build-X-wrt.yml` | [x-wrt/x-wrt](https://github.com/x-wrt/x-wrt) | ⛔ Discontinued | Build X-Wrt by specified tag |
 | `Clean-old-configs.yml` | — | ✅ Active | Weekly archiving: latest 1 per device in `config/immortalwrt-mt798x/`, rolling latest 10 per device in `old_configs/` |
 | `Validate.yml` | — | ✅ Active | Auto-validate Shell/Python/YAML/config on PR/push |
 
@@ -77,7 +72,7 @@ Select `Build-immortalwrt-single.yml` → Run workflow in the Actions tab:
 
 ## Directory Structure
 
-> Note: Contains workflow scripts and configs for all 4 firmware builds. `immortalwrt-*` prefixed files are ImmortalWrt-specific; `lede-*` / `x-wrt-*` are legacy files from discontinued workflows.
+> Note: The repository contains only the scripts and configs required by the ImmortalWrt build.
 
 ```
 ├── .github/workflows/        # Workflow definitions
@@ -90,9 +85,7 @@ Select `Build-immortalwrt-single.yml` → Run workflow in the Actions tab:
 │   ├── immortalwrt-default-branch.txt         # Default source branch (for unmatched devices)
 │   ├── immortalwrt-last-commit.txt            # Last built commit SHA per branch
 │   ├── immortalwrt-diy-control.txt            # DIY script toggle (per-device enable/disable)
-│   ├── *-url.txt                              # Source repository URLs
-│   ├── *-banner*.txt                          # LEDE custom login banner
-│   ├── x-wrt-config-tag.txt                   # X-Wrt build tag
+│   ├── immortalwrt-url.txt                    # ImmortalWrt source repository URL
 │   └── old_configs/                           # Historical config archive
 └── script/
     ├── immortalwrt-actions-diy1.sh   # Pre-feeds-update: clone third-party packages
@@ -101,10 +94,7 @@ Select `Build-immortalwrt-single.yml` → Run workflow in the Actions tab:
     ├── setup-device.sh             # One-click device setup (naming/enable/branch/DIY)
     ├── selftest-validate.sh        # Self-test for the config validation steps (runs in CI)
     ├── immortalwrt-uci-defaults.sh   # uci-defaults: LAN IP, SSH migration, mirrors.sh
-    ├── lede-github-actions-rl.sh     # LEDE: generate release notes
-    ├── x-wrt-actions-txt-001.sh      # X-Wrt: generate release notes
-    ├── x-wrt-make-001.sh             # Pre-download dependencies, clean incomplete files (called before ImmortalWrt compilation)
-    └── gitcj.py + giturl.txt         # Batch clone third-party LuCI plugins
+    └── prefetch-download.sh          # Pre-download dependencies, clean incomplete files (called before compilation)
 ```
 
 ## Common Operations (ImmortalWrt)

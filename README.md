@@ -8,10 +8,8 @@
 
 基于 GitHub Actions 的 OpenWrt 系固件持续集成项目，支持多设备矩阵并行编译、源码变更自动检测、编译失败诊断报告、固件校验、首次启动自动配置（LAN IP / SSH 切换 / 软件源替换）等功能。
 
-> [!WARNING]
-> 目前仅 **ImmortalWrt** 工作流处于积极维护中，其余工作流（LEDE / OpenWrt / X-Wrt）已停止更新，仍可运行但可能存在未知问题，请谨慎使用。
->
-> 已停更的工作流不保证能正常运行，固件可能存在未修复的缺陷，相关问题不再接受反馈和处理。使用者需自行评估风险。
+> [!NOTE]
+> 本仓库只维护 **ImmortalWrt** 编译流程。原 LEDE / OpenWrt / X-Wrt 三个已停更的工作流及其专用脚本、配置已于 2026-11 移除，需要时可在 git 历史中找回。
 
 ## 工作流
 
@@ -19,9 +17,6 @@
 | --- | --- | --- | --- |
 | `Build-immortalwrt.yml` | [immortalwrt-mt798x-rebase](https://github.com/chasey-dev/immortalwrt-mt798x-rebase) | ✅ 维护中 | 矩阵并行编译，含变更跳过、失败诊断、SHA256 校验、构建追溯 |
 | `Build-immortalwrt-single.yml` | [immortalwrt-mt798x-rebase](https://github.com/chasey-dev/immortalwrt-mt798x-rebase) | ✅ 维护中 | 单设备手动编译，支持指定分支和配置文件 |
-| `Build-lede.yml` | [coolsnowwolf/lede](https://github.com/coolsnowwolf/lede) | ⛔ 停止更新 | 编译 LEDE |
-| `Build-openwrt.yml` | [openwrt/openwrt](https://git.openwrt.org/openwrt/openwrt.git) | ⛔ 停止更新 | 编译官方 OpenWrt (main 分支) |
-| `Build-X-wrt.yml` | [x-wrt/x-wrt](https://github.com/x-wrt/x-wrt) | ⛔ 停止更新 | 按指定 tag 编译 X-Wrt |
 | `Clean-old-configs.yml` | — | ✅ 维护中 | 每周日归档旧配置：`config/immortalwrt-mt798x/` 每设备保留最新 1 份，`old_configs/` 每设备滚动保留最近 10 份 |
 | `Validate.yml` | — | ✅ 维护中 | PR/推送时自动校验 Shell/Python/YAML/配置文件 |
 
@@ -76,7 +71,7 @@
 
 ## 目录结构
 
-> 注：包含全部 4 个固件的工作流脚本和配置，其中 `immortalwrt-*` 前缀为 ImmortalWrt 专用，`lede-*` / `x-wrt-*` 为对应停更工作流的遗留文件。
+> 注：仓库只包含 ImmortalWrt 编译所需的脚本与配置。
 
 ```
 ├── .github/workflows/        # 各源码的编译工作流
@@ -89,9 +84,7 @@
 │   ├── immortalwrt-default-branch.txt         # 默认源码分支 (未匹配设备时使用)
 │   ├── immortalwrt-last-commit.txt            # 各分支上次编译时的远端提交 SHA
 │   ├── immortalwrt-diy-control.txt            # DIY 脚本开关 (按设备启用/禁用)
-│   ├── *-url.txt                              # 各源码仓库地址
-│   ├── *-banner*.txt                          # LEDE 自定义登录 banner
-│   ├── x-wrt-config-tag.txt                   # X-Wrt 编译使用的 tag
+│   ├── immortalwrt-url.txt                    # ImmortalWrt 源码仓库地址
 │   └── old_configs/                           # 历史配置存档
 └── script/
     ├── immortalwrt-actions-diy1.sh   # feeds update 前：克隆第三方插件
@@ -100,10 +93,7 @@
     ├── setup-device.sh             # 一键接入设备配置 (命名/启用/分支/DIY)
     ├── selftest-validate.sh        # 自测 Validate.yml 的配置校验步骤 (CI 中执行)
     ├── immortalwrt-uci-defaults.sh    # uci-defaults: LAN IP, SSH 切换, mirrors.sh
-    ├── lede-github-actions-rl.sh     # LEDE: 生成 Release 说明
-    ├── x-wrt-actions-txt-001.sh      # X-Wrt: 生成 Release 说明
-    ├── x-wrt-make-001.sh             # 预下载依赖并清理残缺包 (ImmortalWrt 编译前调用)
-    └── gitcj.py + giturl.txt         # 批量克隆第三方 luci 插件
+    └── prefetch-download.sh          # 预下载依赖并清理残缺包 (编译前调用)
 ```
 
 ## 常用操作 (ImmortalWrt)
