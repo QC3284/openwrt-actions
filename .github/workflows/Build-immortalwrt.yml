@@ -727,7 +727,9 @@ jobs:
           RUN_ID: ${{ github.run_id }}
         run: |
           MATRIX='${{ needs.prepare.outputs.matrix }}'
-          RELEASES=$(gh release list --repo "$REPO" --limit 200 --json tagName,assets)
+          # gh release list 不提供 assets 字段, 用 REST 接口取 tag 与资产名
+          RELEASES=$(gh api "repos/$REPO/releases?per_page=100" \
+            --jq '[.[] | {tagName: .tag_name, assets: [.assets[].name]}]')
           MISSING=0
 
           while IFS= read -r dev; do
@@ -736,7 +738,7 @@ jobs:
             TAG=$(printf '%s' "$RELEASES" | jq -r --arg dev "$dev" --arg run "$RUN_ID" \
               '[.[] | select((.tagName | startswith($dev + "-")) and (.tagName | endswith("-" + $run)))] | .[0].tagName // ""')
             ASSETS=$(printf '%s' "$RELEASES" | jq -r --arg dev "$dev" --arg run "$RUN_ID" \
-              '[.[] | select((.tagName | startswith($dev + "-")) and (.tagName | endswith("-" + $run))) | .assets[]?.name | select((endswith(".bin")) or (endswith(".img")) or (endswith(".fit")) or (endswith(".itb")) or (endswith(".fip")) or (endswith(".ubi")))] | length')
+              '[.[] | select((.tagName | startswith($dev + "-")) and (.tagName | endswith("-" + $run))) | .assets[]? | select((endswith(".bin")) or (endswith(".img")) or (endswith(".fit")) or (endswith(".itb")) or (endswith(".fip")) or (endswith(".ubi")))] | length')
             if [ -z "$TAG" ]; then
               echo "::error::设备 [$dev] 在本次运行中没有 Release (期望 tag 前缀 ${dev}- 后缀 -${RUN_ID})"
               MISSING=$((MISSING + 1))

@@ -206,28 +206,34 @@ echo "--- 产物校验护栏 (Verify Build Artifacts) ---"
 mkdir -p "$TMP/bin"
 cat > "$TMP/bin/gh" <<'GH'
 #!/usr/bin/env bash
+# 只接受护栏实际使用的调用形式; 若代码退回 gh release list --json assets
+# (该子命令没有 assets 字段) 这里直接失败, 避免自测假绿。
+if [[ "${1:-}" != "api" || "${2:-}" != repos/*/releases* ]]; then
+  echo "fake gh: 非预期调用: $*" >&2
+  exit 1
+fi
 case "${FAKE_SCENARIO:-ok}" in
   ok)
     cat <<'JSON'
-[{"tagName":"glinet_gl-mt3000-202601010101-12345","assets":[{"name":"fw-squashfs-sysupgrade.bin"},{"name":"sha256sums.txt"}]},
- {"tagName":"konka_komi-a31-202601010105-12345","assets":[{"name":"fw2-squashfs-sysupgrade.bin"}]}]
+[{"tagName":"glinet_gl-mt3000-202601010101-12345","assets":["fw-squashfs-sysupgrade.bin","sha256sums.txt"]},
+ {"tagName":"konka_komi-a31-202601010105-12345","assets":["fw2-squashfs-sysupgrade.bin"]}]
 JSON
     ;;
   missing)
     cat <<'JSON'
-[{"tagName":"glinet_gl-mt3000-202601010101-12345","assets":[{"name":"fw-squashfs-sysupgrade.bin"}]}]
+[{"tagName":"glinet_gl-mt3000-202601010101-12345","assets":["fw-squashfs-sysupgrade.bin"]}]
 JSON
     ;;
   noasset)
     cat <<'JSON'
-[{"tagName":"glinet_gl-mt3000-202601010101-12345","assets":[{"name":"sha256sums.txt"}]},
- {"tagName":"konka_komi-a31-202601010105-12345","assets":[{"name":"bin.202601010105.7z"}]}]
+[{"tagName":"glinet_gl-mt3000-202601010101-12345","assets":["sha256sums.txt"]},
+ {"tagName":"konka_komi-a31-202601010105-12345","assets":["bin.202601010105.7z"]}]
 JSON
     ;;
   wrongrun)
     cat <<'JSON'
-[{"tagName":"glinet_gl-mt3000-202601010101-99999","assets":[{"name":"fw-squashfs-sysupgrade.bin"}]},
- {"tagName":"konka_komi-a31-202601010105-99999","assets":[{"name":"fw2-squashfs-sysupgrade.bin"}]}]
+[{"tagName":"glinet_gl-mt3000-202601010101-99999","assets":["fw-squashfs-sysupgrade.bin"]},
+ {"tagName":"konka_komi-a31-202601010105-99999","assets":["fw2-squashfs-sysupgrade.bin"]}]
 JSON
     ;;
 esac
