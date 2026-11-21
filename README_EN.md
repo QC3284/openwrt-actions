@@ -88,11 +88,12 @@ Select `Build-immortalwrt-single.yml` → Run workflow in the Actions tab:
 │   ├── immortalwrt-url.txt                    # ImmortalWrt source repository URL
 │   └── old_configs/                           # Historical config archive
 └── script/
-    ├── immortalwrt-actions-diy1.sh   # Pre-feeds-update: clone third-party packages
-    ├── immortalwrt-actions-diy2.sh   # Post-feeds-update: replace OpenClash
+    ├── immortalwrt-actions-diy1.sh   # Pre-feeds-update: clone third-party packages (OpenClash = upstream latest)
+    ├── immortalwrt-actions-diy2.sh   # Post-feeds-update: force-replace OpenClash (fails the build on error)
     ├── immortalwrt-switch-branch.sh  # Switch source branch per device
     ├── setup-device.sh             # One-click device setup (naming/enable/branch/DIY)
     ├── selftest-validate.sh        # Self-test for the config validation steps (runs in CI)
+    ├── selftest-build-guards.sh    # Self-test for the build workflows' silent-failure guards (runs in CI)
     ├── immortalwrt-uci-defaults.sh   # uci-defaults: LAN IP, SSH migration, mirrors.sh
     └── prefetch-download.sh          # Pre-download dependencies, clean incomplete files (called before compilation)
 ```
@@ -110,9 +111,17 @@ The script: extracts the device name from `.config` → copies it as `chip-devic
 
 - Run: `bash script/selftest-validate.sh` (the Validate workflow runs it automatically)
 
-It extracts the config-validation steps' scripts verbatim from `.github/workflows/Validate.yml` (reusing the exact code CI runs) and replays a 15-case matrix in a temporary mirror directory, asserting exit codes and the number of ❌ messages: empty enable list, unknown device, path-traversal bypass, uppercase device name, missing config for an enabled device, empty config directory, trailing comments/whitespace, duplicate lines, missing required files.
+It extracts the config-validation steps' scripts verbatim from `.github/workflows/Validate.yml` (reusing the exact code CI runs) and replays a 17-case matrix in a temporary mirror directory, asserting exit codes and the number of ❌ messages: empty enable list, unknown device, path-traversal bypass, uppercase device name, missing config for an enabled device, empty config directory, trailing comments/whitespace, duplicate lines, missing required files.
 
 Why it exists: when such a check breaks, the symptom is a false green — the push passes, scheduled builds silently skip devices, and it surfaces weeks later (as in `e70cbc5`, where a failed build was reported green). A green CI run alone cannot distinguish "the guard works" from "the guard was removed".
+
+### Self-Test for Build Guards (selftest-build-guards.sh)
+
+- Run: `bash script/selftest-build-guards.sh` (the Validate workflow runs it automatically)
+
+It extracts the real scripts of the "generate build matrix" and "verify build artifacts" steps plus `immortalwrt-actions-diy2.sh` from the two build workflows and replays an 18-case matrix: empty enable list, some/all enabled devices missing configs, a healthy matrix, releases complete / one missing / logs only / other run_id, and OpenClash overlay success / version mismatch / missing overlay. Sentinels assert the key error strings are still present, so removing or renaming a guard cannot pass silently.
+
+The guards close three false-green paths: (1) enabled device without a config makes the matrix empty, so `compile` and `summarize` are both skipped and the whole run ends green in 0 seconds; (2) the build reports success but produced no output directory or no firmware files, and a Release is still created with only `bin.7z` and logs; (3) every device job succeeds yet a release is missing or has no firmware assets. (1) and (3) now exit with `::error::`, (2) fails during packaging, and (3) is cross-checked per device in `summarize`.
 
 ### Adding / Updating a Device Config
 
@@ -144,12 +153,14 @@ Edit `script/immortalwrt-actions-diy1.sh` to add or remove third-party packages 
 
 | Plugin | Source | Description |
 |------|------|------|
-| OpenClash | `vernesong/OpenClash` | Proxy tool |
+| OpenClash | `vernesong/OpenClash` | Proxy tool — forced to the higher PKG_VERSION of upstream master/dev (beta included) |
 | luci-app-quickfile | `sbwml/luci-app-quickfile` | File manager |
 | luci-app-harbor-file | `destan19/luci-app-harbor-file` | File manager |
 | luci-theme-proton2025 | `ChesterGoodiny/luci-theme-proton2025` | Theme |
 | luci-app-run | `wukongdaily/luci-app-run` | Run utility |
 | luci-app-online-upgrade | `QC3284/luci-app-online-upgrade` (v2.0.0) | Online firmware upgrade — adapted for multi-device release list matching |
+
+> **OpenClash version policy**: never built from the feeds copy. Each build probes `PKG_VERSION` on both upstream `master` (stable) and `dev` (beta), force-replaces the package with the higher one, and fails the build when neither is reachable instead of silently falling back to the feeds version. The version actually used is recorded in `build-info.txt` inside the release assets and in the Actions run summary.
 
 ### Custom uci-defaults Configuration
 

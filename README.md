@@ -87,11 +87,12 @@
 │   ├── immortalwrt-url.txt                    # ImmortalWrt 源码仓库地址
 │   └── old_configs/                           # 历史配置存档
 └── script/
-    ├── immortalwrt-actions-diy1.sh   # feeds update 前：克隆第三方插件
-    ├── immortalwrt-actions-diy2.sh   # feeds update 后：替换 OpenClash
+    ├── immortalwrt-actions-diy1.sh   # feeds update 前：克隆第三方插件 (OpenClash 取官方最新版)
+    ├── immortalwrt-actions-diy2.sh   # feeds update 后：强制替换 OpenClash (失败即中断)
     ├── immortalwrt-switch-branch.sh  # 按机型切换源码分支
     ├── setup-device.sh             # 一键接入设备配置 (命名/启用/分支/DIY)
     ├── selftest-validate.sh        # 自测 Validate.yml 的配置校验步骤 (CI 中执行)
+    ├── selftest-build-guards.sh    # 自测 Build 工作流的静默失败护栏 (CI 中执行)
     ├── immortalwrt-uci-defaults.sh    # uci-defaults: LAN IP, SSH 切换, mirrors.sh
     └── prefetch-download.sh          # 预下载依赖并清理残缺包 (编译前调用)
 ```
@@ -109,9 +110,17 @@
 
 - 运行：`bash script/selftest-validate.sh`（CI 的 Validate 工作流会自动执行）
 
-直接从 `.github/workflows/Validate.yml` 抽取配置校验步骤的脚本原文（逐字节复用 CI 执行的代码），在临时镜像目录上跑 15 项场景矩阵，断言退出码与 ❌ 消息数量：空启用列表、未知设备、路径穿越绕过、大写设备名、设备名写错致配置丢失、设备目录为空、行尾注释/空白、重复行、必需文件缺失等。
+直接从 `.github/workflows/Validate.yml` 抽取配置校验步骤的脚本原文（逐字节复用 CI 执行的代码），在临时镜像目录上跑 17 项场景矩阵，断言退出码与 ❌ 消息数量：空启用列表、未知设备、路径穿越绕过、大写设备名、设备名写错致配置丢失、设备目录为空、行尾注释/空白、重复行、必需文件缺失等。
 
 为什么需要它：这类校验一旦被改坏，表现是「该红却绿」——推送全绿、定时编译静默跳过设备、数周后才被发现（历史上的 `e70cbc5` 即属此类：编译失败却显示绿色）；而只看 CI 绿不绿，无法区分「护栏生效」与「护栏被摘掉」。
+
+### 编译护栏自测 (selftest-build-guards.sh)
+
+- 运行：`bash script/selftest-build-guards.sh`（CI 的 Validate 工作流会自动执行）
+
+从两个 Build 工作流抽取「生成编译矩阵」「校验本次运行产物」以及 `immortalwrt-actions-diy2.sh` 的原文，跑 18 项场景：空启用列表、部分/全部启用设备缺配置、正常出矩阵、Release 齐全 / 少一台 / 只有日志 / 属其他 run_id、OpenClash 版本覆盖成功 / 版本不符 / 缺 overlay 源。另用哨兵断言关键错误文案仍在脚本里，防止护栏被删或改名后场景矩阵「无步骤可跑」而假绿。
+
+护栏要堵的正是三种静默成功：① 启用设备缺配置时矩阵为空，compile 与 summarize 都被 `if` 跳过，整次运行 0 秒结束且绿色；② 编译报成功但没有输出目录或没有固件文件，Release 仍会被创建（只挂 `bin.7z` 与日志）；③ 全部设备 job 成功但某台设备的 Release 缺失或没有固件资产。现在 ①③ 直接 `::error::` 退出，② 在打包阶段失败，③ 在 summarize 阶段逐台核对 run_id 与资产后缀。
 
 ### 新增/更新设备配置
 
@@ -143,12 +152,14 @@ glinet_gl-mt3600be false
 
 | 插件 | 来源 | 说明 |
 |------|------|------|
-| OpenClash | `vernesong/OpenClash` | 代理工具 |
+| OpenClash | `vernesong/OpenClash` | 代理工具——强制取官方 master/dev 中 PKG_VERSION 更高者（含测试版） |
 | luci-app-quickfile | `sbwml/luci-app-quickfile` | 文件管理 |
 | luci-app-harbor-file | `destan19/luci-app-harbor-file` | 文件管理 |
 | luci-theme-proton2025 | `ChesterGoodiny/luci-theme-proton2025` | 主题 |
 | luci-app-run | `wukongdaily/luci-app-run` | 运行工具 |
 | luci-app-online-upgrade | `QC3284/luci-app-online-upgrade` (v2.0.0) | 固件在线升级——已适配本项目多设备 Release 列表匹配 |
+
+> **OpenClash 版本策略**：不随 feeds 自带版本编译。每次构建分别探测上游 `master`（稳定）与 `dev`（测试）两条线的 `PKG_VERSION`，取更高者强制替换；两条线都取不到时构建直接失败，不会静默回退到 feeds 旧版。实际使用的版本会写入 Release 资产中的 `build-info.txt` 与 Actions 运行摘要。
 
 ### 自定义 uci-defaults 配置
 

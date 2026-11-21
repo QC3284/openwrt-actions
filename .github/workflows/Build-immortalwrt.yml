@@ -221,13 +221,28 @@ jobs:
           done
 
           MATRIX_ITEMS=()
+          MISSING_DEVICES=()
           for dev in "${ENABLED_DEVICES[@]}"; do
             if [ -n "${LATEST_CONFIGS[$dev]}" ]; then
               MATRIX_ITEMS+=("$(jq -cn --arg device "$dev" --arg chip "${LATEST_CHIP[$dev]}" --arg config "${LATEST_CONFIGS[$dev]}" '{device:$device,chip:$chip,config:$config}')")
             else
-              echo "::warning::设备 [$dev] 未找到配置文件，已跳过"
+              echo "::error::设备 [$dev] 已启用，但 config/immortalwrt-mt798x/ 下没有符合命名规则的配置"
+              MISSING_DEVICES+=("$dev")
             fi
           done
+
+          # 静默失败护栏：矩阵一旦为空，compile 与 summarize 都会被 if 条件跳过，
+          # 整次运行一台设备都不编译却显示成功 (绿色)。Validate.yml 虽在推送时拦截
+          # 配置缺失，但改分支/改文件名等运行期变化不受它约束，故这里再堵一道。
+          if [ ${#MISSING_DEVICES[@]} -gt 0 ]; then
+            echo "::error::${#MISSING_DEVICES[@]} 台启用设备缺少配置: ${MISSING_DEVICES[*]}"
+            exit 1
+          fi
+          if [ ${#MATRIX_ITEMS[@]} -eq 0 ]; then
+            echo "::error::编译矩阵为空，拒绝以「成功」结束一次什么都没编译的运行"
+            exit 1
+          fi
+
           JSON_ARRAY=$(printf '%s\n' "${MATRIX_ITEMS[@]}" | jq -sc .)
 
           echo "matrix=$JSON_ARRAY" >> $GITHUB_OUTPUT
@@ -508,8 +523,8 @@ jobs:
           # 使下方的空目录检查成为死代码
           TARGET_PATH=$(find bin/targets -mindepth 2 -maxdepth 2 -type d 2>/dev/null | head -n 1 || true)
           if [ -z "$TARGET_PATH" ]; then
-            echo "::warning::未找到编译输出目录，跳过固件打包"
-            exit 0
+            echo "::error::编译报成功但未找到输出目录 bin/targets/<target>/<subtarget>，拒绝继续发布"
+            exit 1
           fi
           TARGET_NAME="${TARGET_PATH#bin/targets/}"
           echo "输出目录: $TARGET_PATH (平台: $TARGET_NAME)"
@@ -571,17 +586,21 @@ jobs:
 
           # 生成 SHA256 校验文件 (失败自动重试一次，仍失败则致命)
           FIRMWARE_FILES=$(ls $FW_GLOB 2>/dev/null || true)
-          if [ -n "$FIRMWARE_FILES" ]; then
+          # 静默失败护栏：编译报成功却没有任何固件产物时，Release 仍会被创建
+          # (只挂 bin.7z 与日志) 并显示成功。这里直接失败。
+          if [ -z "$FIRMWARE_FILES" ]; then
+            echo "::error::编译报成功但未生成任何固件文件 ($FW_GLOB)，拒绝发布空 Release"
+            exit 1
+          fi
+          if sha256sum $FIRMWARE_FILES > sha256sums.txt 2>/dev/null; then
+            echo "SHA256 校验文件已生成"
+          else
+            sleep 1
             if sha256sum $FIRMWARE_FILES > sha256sums.txt 2>/dev/null; then
-              echo "SHA256 校验文件已生成"
+              echo "SHA256 校验文件已生成 (重试成功)"
             else
-              sleep 1
-              if sha256sum $FIRMWARE_FILES > sha256sums.txt 2>/dev/null; then
-                echo "SHA256 校验文件已生成 (重试成功)"
-              else
-                echo "::error::SHA256 校验生成失败 (已重试)"
-                exit 1
-              fi
+              echo "::error::SHA256 校验生成失败 (已重试)"
+              exit 1
             fi
           fi
 
@@ -591,6 +610,14 @@ jobs:
           cd ${{ env.OPENWRT_DIR }}
           SOURCE_COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
           SOURCE_BRANCH=$(git branch --show-current 2>/dev/null || echo "unknown")
+
+          # OpenClash 版本仅在该包被选入本设备配置时才有意义
+          # (konka_komi-a31 的配置默认不选该包)
+          if grep -qx 'CONFIG_PACKAGE_luci-app-openclash=y' .config 2>/dev/null; then
+            OPENCLASH_INFO="${OPENCLASH_VERSION:-feeds 默认版本}"
+          else
+            OPENCLASH_INFO="未编入本设备固件 (CONFIG_PACKAGE_luci-app-openclash 未启用)"
+          fi
 
           cat > ${{ env.TARGET_DIR }}/build-info.txt << EOF
           Image Builder Info
@@ -605,6 +632,7 @@ jobs:
           Source Repo:   $(cat "${{ env.SOURCE_CODE_URL_FILE }}")
           Source Branch: ${SOURCE_BRANCH}
           Source Commit: ${SOURCE_COMMIT}
+          OpenClash:     ${OPENCLASH_INFO}
           GitHub Repo:   ${{ github.repository }}
           EOF
           echo "build-info.txt 已生成"
@@ -687,6 +715,44 @@ jobs:
             echo ""
             echo "> $(date '+%Y-%m-%d %H:%M') · ${{ github.event_name }} · [${{ github.workflow }} #${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
           } >> $GITHUB_STEP_SUMMARY
+
+      - name: 校验本次运行产物 (Verify Build Artifacts)
+        # 静默失败护栏：所有设备 job 都成功，也可能出现「本机编译完成但 Release
+        # 缺失或没有任何固件资产」的情况 (上传失败、files glob 为空等)。
+        # 这里按本次 run_id 逐台设备核对 Release 与固件资产，缺一即失败。
+        if: needs.compile.result == 'success'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          MATRIX='${{ needs.prepare.outputs.matrix }}'
+          RELEASES=$(gh release list --repo "$REPO" --limit 200 --json tagName,assets)
+          MISSING=0
+
+          while IFS= read -r dev; do
+            [ -n "$dev" ] || continue
+            # 成功 Release 的 tag 形如 <device>-<YYYYMMDDHHMM>-<run_id>
+            TAG=$(printf '%s' "$RELEASES" | jq -r --arg dev "$dev" --arg run "$RUN_ID" \
+              '[.[] | select((.tagName | startswith($dev + "-")) and (.tagName | endswith("-" + $run)))] | .[0].tagName // ""')
+            ASSETS=$(printf '%s' "$RELEASES" | jq -r --arg dev "$dev" --arg run "$RUN_ID" \
+              '[.[] | select((.tagName | startswith($dev + "-")) and (.tagName | endswith("-" + $run))) | .assets[]?.name | select((endswith(".bin")) or (endswith(".img")) or (endswith(".fit")) or (endswith(".itb")) or (endswith(".fip")) or (endswith(".ubi")))] | length')
+            if [ -z "$TAG" ]; then
+              echo "::error::设备 [$dev] 在本次运行中没有 Release (期望 tag 前缀 ${dev}- 后缀 -${RUN_ID})"
+              MISSING=$((MISSING + 1))
+            elif [ "$ASSETS" -lt 1 ]; then
+              echo "::error::设备 [$dev] 的 Release [$TAG] 没有任何固件资产"
+              MISSING=$((MISSING + 1))
+            else
+              echo "✅ $dev -> $TAG ($ASSETS 个固件资产)"
+            fi
+          done < <(printf '%s' "$MATRIX" | jq -r '.[].device')
+
+          if [ "$MISSING" -gt 0 ]; then
+            echo "::error::$MISSING 台设备的产物校验未通过"
+            exit 1
+          fi
+          echo "全部设备的 Release 与固件资产校验通过"
 
       - name: 清理失败草稿 Release (Clean Failed Draft Releases)
         uses: ophub/delete-releases-workflows@185ead47518014ad09d25f358e70353483bdb22f

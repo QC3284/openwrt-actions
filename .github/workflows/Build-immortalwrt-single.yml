@@ -379,8 +379,8 @@ jobs:
           # 使下方的空目录检查成为死代码
           TARGET_PATH=$(find bin/targets -mindepth 2 -maxdepth 2 -type d 2>/dev/null | head -n 1 || true)
           if [ -z "$TARGET_PATH" ]; then
-            echo "::warning::未找到编译输出目录，跳过固件打包"
-            exit 0
+            echo "::error::编译报成功但未找到输出目录 bin/targets/<target>/<subtarget>，拒绝继续发布"
+            exit 1
           fi
           TARGET_NAME="${TARGET_PATH#bin/targets/}"
           echo "输出目录: $TARGET_PATH"
@@ -438,17 +438,21 @@ jobs:
           echo "TARGET_NAME=$TARGET_NAME" >> $GITHUB_ENV
 
           FIRMWARE_FILES=$(ls $FW_GLOB 2>/dev/null || true)
-          if [ -n "$FIRMWARE_FILES" ]; then
+          # 静默失败护栏：编译报成功却没有任何固件产物时，Release 仍会被创建
+          # (只挂 bin.7z 与日志) 并显示成功。这里直接失败。
+          if [ -z "$FIRMWARE_FILES" ]; then
+            echo "::error::编译报成功但未生成任何固件文件 ($FW_GLOB)，拒绝发布空 Release"
+            exit 1
+          fi
+          if sha256sum $FIRMWARE_FILES > sha256sums.txt 2>/dev/null; then
+            echo "SHA256 校验文件已生成"
+          else
+            sleep 1
             if sha256sum $FIRMWARE_FILES > sha256sums.txt 2>/dev/null; then
-              echo "SHA256 校验文件已生成"
+              echo "SHA256 校验文件已生成 (重试成功)"
             else
-              sleep 1
-              if sha256sum $FIRMWARE_FILES > sha256sums.txt 2>/dev/null; then
-                echo "SHA256 校验文件已生成 (重试成功)"
-              else
-                echo "::error::SHA256 校验生成失败 (已重试)"
-                exit 1
-              fi
+              echo "::error::SHA256 校验生成失败 (已重试)"
+              exit 1
             fi
           fi
 
@@ -457,6 +461,13 @@ jobs:
         run: |
           cd ${{ env.OPENWRT_DIR }}
           SOURCE_COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+
+          # OpenClash 版本仅在该包被选入本设备配置时才有意义
+          if grep -qx 'CONFIG_PACKAGE_luci-app-openclash=y' .config 2>/dev/null; then
+            OPENCLASH_INFO="${OPENCLASH_VERSION:-feeds 默认版本}"
+          else
+            OPENCLASH_INFO="未编入本设备固件 (CONFIG_PACKAGE_luci-app-openclash 未启用)"
+          fi
 
           cat > ${{ env.TARGET_DIR }}/build-info.txt << EOF
           Image Builder Info
@@ -468,6 +479,7 @@ jobs:
           Target:        ${{ env.TARGET_NAME }}
           Source Branch: ${{ env.BUILD_BRANCH }}
           Source Commit: ${SOURCE_COMMIT}
+          OpenClash:     ${OPENCLASH_INFO}
           GitHub Repo:   ${{ github.repository }}
           EOF
           echo "build-info.txt 已生成"

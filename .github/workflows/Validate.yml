@@ -245,6 +245,11 @@ jobs:
         # 自测直接从本文件抽取上面两步的脚本原文 (逐字节复用 CI 执行的代码) 跑场景矩阵。
         run: bash script/selftest-validate.sh
 
+      - name: 编译护栏自测 (Self-test Build Guards)
+        # 空矩阵/空产物同样属于"该红却绿"的静默失败。自测从两个 Build 工作流抽取护栏
+        # 步骤的 run 原文, 用假 gh 与临时目录跑场景矩阵, 并断言关键错误文案仍在。
+        run: bash script/selftest-build-guards.sh
+
       - name: ShellCheck (静态分析 Shell 脚本)
         # 固定到 commit SHA: 上游 2024-06 后未再更新，@master 为浮动引用
         uses: ludeeus/action-shellcheck@00b27aa7cb85167568cb48a3838b75f4265f2bca
